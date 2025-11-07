@@ -127,10 +127,21 @@ class DocumentController extends Controller
                 'created_by' => Auth::id(),
             ]);
 
-            // Create tangki
+            // Create tangki with auto seri_out generation
             foreach ($request->tangki as $index => $tangkiData) {
+                // Auto-generate seri_out if not provided
+                $seriOut = $tangkiData['seri_out'] ?? null;
+                if (! $seriOut) {
+                    $maxSeri = $document->tangki()
+                        ->where('no_tangki', $tangkiData['no_tangki'])
+                        ->max('seri_out');
+                    $seriOut = ($maxSeri ?? 0) + 1;
+                }
+
                 $document->tangki()->create([
+                    'kd_dok_inout' => $tangkiData['kd_dok_inout'], // Mandatory FK
                     'no_tangki' => $tangkiData['no_tangki'],
+                    'seri_out' => $seriOut, // Auto-generated sequence
                     'jenis_isi' => $tangkiData['jenis_isi'],
                     'jenis_kemasan' => $tangkiData['jenis_kemasan'] ?? null,
                     'kapasitas' => $tangkiData['kapasitas'],
@@ -254,11 +265,22 @@ class DocumentController extends Controller
                 'updated_by' => Auth::id(),
             ]);
 
-            // Update tangki - delete existing and recreate
+            // Update tangki - delete existing and recreate with auto seri_out
             $document->tangki()->delete();
             foreach ($request->tangki as $index => $tangkiData) {
+                // Auto-generate seri_out if not provided
+                $seriOut = $tangkiData['seri_out'] ?? null;
+                if (! $seriOut) {
+                    $maxSeri = $document->tangki()
+                        ->where('no_tangki', $tangkiData['no_tangki'])
+                        ->max('seri_out');
+                    $seriOut = ($maxSeri ?? 0) + 1;
+                }
+
                 $document->tangki()->create([
+                    'kd_dok_inout' => $tangkiData['kd_dok_inout'], // Mandatory FK
                     'no_tangki' => $tangkiData['no_tangki'],
+                    'seri_out' => $seriOut, // Auto-generated sequence
                     'jenis_isi' => $tangkiData['jenis_isi'],
                     'jenis_kemasan' => $tangkiData['jenis_kemasan'] ?? null,
                     'kapasitas' => $tangkiData['kapasitas'],

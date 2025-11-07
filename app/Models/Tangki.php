@@ -15,8 +15,9 @@ class Tangki extends Model
 
     protected $fillable = [
         'document_id',
+        'kd_dok_inout', // Mandatory FK
         'no_tangki',
-        'seri_out',
+        'seri_out', // Activity sequence
         'no_bl_awb',
         'tgl_bl_awb',
         'id_consignee',
@@ -26,7 +27,6 @@ class Tangki extends Model
         'no_pos_bc11',
         'jml_satuan',
         'jns_satuan',
-        'kd_dok_inout',
         'no_dok_inout',
         'tgl_dok_inout',
         'kd_sar_angkut_inout',
@@ -53,9 +53,12 @@ class Tangki extends Model
         'pel_muat',
         'pel_transit',
         'pel_bongkar',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [
+        'seri_out' => 'integer',
         'kapasitas' => 'decimal:3',
         'jumlah_isi' => 'decimal:3',
         'jml_satuan' => 'decimal:3',
@@ -78,9 +81,32 @@ class Tangki extends Model
         return $this->belongsTo(Document::class);
     }
 
+    public function kdDokInout(): BelongsTo
+    {
+        return $this->belongsTo(KdDokInout::class, 'kd_dok_inout', 'kd_dok_inout');
+    }
+
     public function tangkiReferences(): HasMany
     {
         return $this->hasMany(TangkiReference::class);
+    }
+
+    // Boot method for auto-filling audit fields
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function ($tangki) {
+            if (auth()->check()) {
+                $tangki->created_by = auth()->user()->name ?? auth()->user()->email;
+            }
+        });
+
+        static::updating(function ($tangki) {
+            if (auth()->check()) {
+                $tangki->updated_by = auth()->user()->name ?? auth()->user()->email;
+            }
+        });
     }
 
     // Scopes

@@ -160,8 +160,16 @@ class DocumentController extends Controller
                 'username' => auth()->user()->name ?? 'system',
             ]);
 
-            // Create tangki
+            // Create tangki with auto seri_out generation
             foreach ($validated['tangki'] as $tangkiData) {
+                // Auto-generate seri_out if not provided
+                if (! isset($tangkiData['seri_out'])) {
+                    $maxSeri = $document->tangki()
+                        ->where('no_tangki', $tangkiData['no_tangki'])
+                        ->max('seri_out');
+                    $tangkiData['seri_out'] = ($maxSeri ?? 0) + 1;
+                }
+
                 $document->tangki()->create($tangkiData);
             }
 
@@ -284,9 +292,17 @@ class DocumentController extends Controller
                 'keterangan' => $validated['keterangan'],
             ]);
 
-            // Delete existing tangki and recreate
+            // Delete existing tangki and recreate with auto seri_out
             $document->tangki()->delete();
             foreach ($validated['tangki'] as $tangkiData) {
+                // Auto-generate seri_out if not provided
+                if (! isset($tangkiData['seri_out'])) {
+                    $maxSeri = $document->tangki()
+                        ->where('no_tangki', $tangkiData['no_tangki'])
+                        ->max('seri_out');
+                    $tangkiData['seri_out'] = ($maxSeri ?? 0) + 1;
+                }
+
                 $document->tangki()->create($tangkiData);
             }
 
