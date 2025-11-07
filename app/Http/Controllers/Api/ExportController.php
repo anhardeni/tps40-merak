@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use App\Models\HostTransmissionLog;
 use App\Services\XmlJsonGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -253,6 +254,11 @@ class ExportController extends Controller
                 'format' => $format,
             ]);
 
+            // Get request data for logging
+            $requestData = $format === 'xml' 
+                ? $this->xmlJsonService->generateXML($document)
+                : $this->xmlJsonService->generateJSON($document);
+
             // Send with automatic retry (3 attempts with exponential backoff)
             $result = $retryHandler->execute(
                 callback: fn () => $hostService->send($document, $format),
@@ -279,6 +285,20 @@ class ExportController extends Controller
                 'updated_by' => auth()->id(),
             ]);
 
+            // Log transmission to history
+            HostTransmissionLog::create([
+                'document_id' => $document->id,
+                'format' => $format,
+                'status' => 'success',
+                'request_data' => $requestData,
+                'response_data' => json_encode($result['response_data'] ?? null),
+                'response_time' => $result['response_time'] ?? null,
+                'transmission_size' => $result['transmission_size'] ?? null,
+                'transmitter' => $result['transmitter'] ?? 'system',
+                'sent_at' => now(),
+                'sent_by' => auth()->id(),
+            ]);
+
             Log::info('Successfully sent to host', [
                 'document_id' => $document->id,
                 'format' => $format,
@@ -296,11 +316,186 @@ class ExportController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            // Log failed transmission
+            HostTransmissionLog::create([
+                'document_id' => $document->id,
+                'format' => $format ?? 'xml',
+                'status' => 'failed',
+                'error_message' => $e->getMessage(),
+                'sent_at' => now(),
+                'sent_by' => auth()->id(),
+            ]);
+
             Log::error('Send to Host Error: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
                 'message' => 'Error sending to host: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Resend document to host (for documents that were already sent)
+     */
+    public function resendToHost(string $id, Request $request)
+    {
+        try {
+            $document = Document::findOrFail($id);
+
+            // Check if document is approved
+            if ($document->status !== 'APPROVED') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only approved documents can be sent to host',
+                ], 400);
+            }
+
+            // Get format from request (default: xml)
+            $format = $request->input('format', 'xml');
+
+            if (! in_array($format, ['xml', 'json'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid format. Allowed: xml, json',
+                ], 400);
+            }
+
+            // Use new HostTransmissionService with retry
+            $hostService = app(\App\Services\HostTransmission\HostTransmissionService::class);
+            $retryHandler = app(\App\Services\HostTransmission\RetryHandler::class);
+
+            Log::info('Resending to host', [
+                'document_id' => $document->id,
+                'ref_number' => $document->ref_number,
+                'format' => $format,
+                'previous_sent_at' => $document->sent_at,
+            ]);
+
+            // Get request data for logging
+            $requestData = $format === 'xml' 
+                ? $this->xmlJsonService->generateXML($document)
+                : $this->xmlJsonService->generateJSON($document);
+
+            // Send with automatic retry
+            $result = $retryHandler->execute(
+                callback: fn () => $hostService->send($document, $format),
+                context: [
+                    'document_id' => $document->id,
+                    'ref_number' => $document->ref_number,
+                    'format' => $format,
+                    'is_resend' => true,
+                ]
+            );
+
+            // Update document with latest transmission info
+            $document->update([
+                'sent_to_host' => true,
+                'sent_at' => now(),
+                'host_response' => [
+                    'transmission_format' => $result['format'],
+                    'transmission_size' => $result['transmission_size'] ?? null,
+                    'response_time' => $result['response_time'] ?? null,
+                    'transmitter' => $result['transmitter'] ?? null,
+                    'message' => $result['message'] ?? null,
+                    'response_data' => $result['response_data'] ?? null,
+                    'transmitted_at' => $result['transmitted_at'] ?? null,
+                    'is_resend' => true,
+                ],
+                'updated_by' => auth()->id(),
+            ]);
+
+            // Log resend transmission to history
+            HostTransmissionLog::create([
+                'document_id' => $document->id,
+                'format' => $format,
+                'status' => 'success',
+                'request_data' => $requestData,
+                'response_data' => json_encode($result['response_data'] ?? null),
+                'response_time' => $result['response_time'] ?? null,
+                'transmission_size' => $result['transmission_size'] ?? null,
+                'transmitter' => $result['transmitter'] ?? 'system',
+                'sent_at' => now(),
+                'sent_by' => auth()->id(),
+            ]);
+
+            Log::info('Successfully resent to host', [
+                'document_id' => $document->id,
+                'format' => $format,
+                'response_time' => $result['response_time'] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? "Document resent to host successfully ({$format} format)",
+                'format' => $result['format'],
+                'transmitter' => $result['transmitter'] ?? null,
+                'response_time' => $result['response_time'] ?? null,
+                'transmission_size' => $result['transmission_size'] ?? null,
+                'host_response' => $result['response_data'] ?? null,
+                'is_resend' => true,
+            ]);
+
+        } catch (\Exception $e) {
+            // Log failed resend
+            if (isset($document)) {
+                HostTransmissionLog::create([
+                    'document_id' => $document->id,
+                    'format' => $format ?? 'xml',
+                    'status' => 'failed',
+                    'error_message' => $e->getMessage(),
+                    'sent_at' => now(),
+                    'sent_by' => auth()->id(),
+                ]);
+            }
+
+            Log::error('Resend to Host Error: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error resending to host: '.$e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get transmission history for a document
+     */
+    public function transmissionHistory(string $id)
+    {
+        try {
+            $document = Document::findOrFail($id);
+
+            $logs = HostTransmissionLog::with('sentBy:id,name')
+                ->where('document_id', $document->id)
+                ->orderBy('sent_at', 'desc')
+                ->get()
+                ->map(function ($log) {
+                    return [
+                        'id' => $log->id,
+                        'format' => $log->format,
+                        'status' => $log->status,
+                        'response_time' => $log->response_time,
+                        'transmission_size' => $log->transmission_size,
+                        'transmitter' => $log->transmitter,
+                        'error_message' => $log->error_message,
+                        'sent_at' => $log->sent_at->format('Y-m-d H:i:s'),
+                        'sent_by' => $log->sentBy->name ?? 'System',
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'logs' => $logs,
+                'total_transmissions' => $logs->count(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get Transmission History Error: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching transmission history: '.$e->getMessage(),
             ], 500);
         }
     }

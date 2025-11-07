@@ -94,6 +94,9 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
   const StatusIcon = statusConfig[document.status].icon
   const [transmissionFormat, setTransmissionFormat] = useState<'xml' | 'json'>('xml')
   const [isSending, setIsSending] = useState(false)
+  const [isResending, setIsResending] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [transmissionHistory, setTransmissionHistory] = useState<any[]>([])
 
   const handleSubmit = () => {
     if (confirm('Apakah Anda yakin ingin submit dokumen ini?')) {
@@ -116,6 +119,38 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
           console.error('Send to host error:', errors)
         }
       })
+    }
+  }
+
+  const handleResendToHost = () => {
+    if (confirm(`Kirim ULANG dokumen ke host dalam format ${transmissionFormat.toUpperCase()}?\n\nData sebelumnya akan di-overwrite.`)) {
+      setIsResending(true)
+      router.post(`/api/export/documents/${document.id}/resend-to-host`, {
+        format: transmissionFormat
+      }, {
+        onSuccess: () => {
+          setIsResending(false)
+          router.reload({ only: ['document'] })
+          fetchTransmissionHistory() // Refresh history
+        },
+        onError: (errors) => {
+          setIsResending(false)
+          console.error('Resend to host error:', errors)
+        }
+      })
+    }
+  }
+
+  const fetchTransmissionHistory = async () => {
+    try {
+      const response = await fetch(`/api/export/documents/${document.id}/transmission-history`)
+      const data = await response.json()
+      if (data.success) {
+        setTransmissionHistory(data.logs)
+        setShowHistory(true)
+      }
+    } catch (error) {
+      console.error('Failed to fetch transmission history:', error)
     }
   }
 
@@ -241,14 +276,36 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                       </SelectContent>
                     </Select>
                     
-                    <Button
-                      onClick={handleSendToHost}
-                      disabled={isSending}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      {isSending ? 'Mengirim...' : 'Send to Host'}
-                    </Button>
+                    {/* @ts-ignore - sent_to_host may not be in type */}
+                    {!document.sent_to_host ? (
+                      <Button
+                        onClick={handleSendToHost}
+                        disabled={isSending}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {isSending ? 'Mengirim...' : 'Send to Host'}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          onClick={handleResendToHost}
+                          disabled={isResending}
+                          variant="outline"
+                          className="border-orange-500 text-orange-600 hover:bg-orange-50"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          {isResending ? 'Mengirim Ulang...' : 'Resend to Host'}
+                        </Button>
+                        <Button
+                          onClick={fetchTransmissionHistory}
+                          variant="outline"
+                          size="sm"
+                        >
+                          History ({transmissionHistory.length || '?'})
+                        </Button>
+                      </>
+                    )}
                   </div>
                 )}
                 
@@ -256,6 +313,70 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
             )}
           </div>
         </div>
+
+        {/* Transmission History Modal/Card */}
+        {showHistory && transmissionHistory.length > 0 && (
+          <Card className="mb-6 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-blue-900 dark:text-blue-100">
+                Riwayat Pengiriman ke Host ({transmissionHistory.length}x)
+              </CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowHistory(false)}
+              >
+                ✕ Tutup
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {transmissionHistory.map((log, index) => (
+                  <div 
+                    key={log.id} 
+                    className="flex items-start gap-4 p-3 bg-white dark:bg-slate-800 rounded-lg border"
+                  >
+                    <div className="flex-shrink-0">
+                      <Badge 
+                        variant={log.status === 'success' ? 'success' : log.status === 'failed' ? 'destructive' : 'secondary'}
+                        className="min-w-[80px] justify-center"
+                      >
+                        {log.status === 'success' ? '✓ Success' : log.status === 'failed' ? '✗ Failed' : '⏳ Pending'}
+                      </Badge>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-sm">
+                          Pengiriman #{transmissionHistory.length - index}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {log.format.toUpperCase()}
+                        </Badge>
+                        {log.response_time && (
+                          <span className="text-xs text-slate-500">
+                            {log.response_time}ms
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-600 dark:text-slate-400">
+                        <div>Dikirim: {log.sent_at}</div>
+                        <div>Oleh: {log.sent_by}</div>
+                        {log.transmission_size && (
+                          <div>Ukuran: {(log.transmission_size / 1024).toFixed(2)} KB</div>
+                        )}
+                        {log.error_message && (
+                          <div className="text-red-600 dark:text-red-400 mt-1">
+                            Error: {log.error_message}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Document Details */}
         <Card>

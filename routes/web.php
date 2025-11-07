@@ -47,6 +47,8 @@ Route::middleware('auth')->group(function () {
         Route::middleware('permission:export.json')->group(function () {
             Route::post('documents/bulk', [\App\Http\Controllers\Api\ExportController::class, 'bulkExport'])->name('bulk');
             Route::post('documents/{id}/send-to-host', [\App\Http\Controllers\Api\ExportController::class, 'sendToHost'])->name('send-to-host');
+            Route::post('documents/{id}/resend-to-host', [\App\Http\Controllers\Api\ExportController::class, 'resendToHost'])->name('resend-to-host');
+            Route::get('documents/{id}/transmission-history', [\App\Http\Controllers\Api\ExportController::class, 'transmissionHistory'])->name('transmission-history');
         });
     });
 
