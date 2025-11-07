@@ -51,12 +51,18 @@ interface IndexDocumentProps extends PageProps {
   }
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; variant: any; icon: any }> = {
   draft: { label: 'Draft', variant: 'secondary' as const, icon: Clock },
+  DRAFT: { label: 'Draft', variant: 'secondary' as const, icon: Clock },
   submitted: { label: 'Disubmit', variant: 'default' as const, icon: Send },
   approved: { label: 'Disetujui', variant: 'success' as const, icon: CheckCircle },
   rejected: { label: 'Ditolak', variant: 'destructive' as const, icon: XCircle },
   completed: { label: 'Selesai', variant: 'success' as const, icon: CheckCircle }
+}
+
+// Helper function to get status config with fallback
+const getStatusConfig = (status: string) => {
+  return statusConfig[status] || statusConfig[status?.toLowerCase()] || statusConfig.draft
 }
 
 export default function IndexDocument({ auth, documents, filters }: IndexDocumentProps) {
@@ -214,7 +220,8 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                       </thead>
                       <tbody>
                         {documents.data.map((document) => {
-                          const StatusIcon = statusConfig[document.status].icon
+                          const config = getStatusConfig(document.status)
+                          const StatusIcon = config.icon
                           return (
                             <tr key={document.id} className="border-b hover:bg-slate-50 dark:hover:bg-slate-900">
                               <td className="p-4">
@@ -239,11 +246,11 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                               </td>
                               <td className="p-4">
                                 <Badge 
-                                  variant={statusConfig[document.status].variant}
+                                  variant={config.variant}
                                   className="flex items-center gap-1 w-fit"
                                 >
                                   <StatusIcon className="w-3 h-3" />
-                                  {statusConfig[document.status].label}
+                                  {config.label}
                                 </Badge>
                               </td>
                               <td className="p-4">
@@ -325,7 +332,8 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                 {/* Mobile view */}
                 <div className="lg:hidden space-y-4">
                   {documents.data.map((document) => {
-                    const StatusIcon = statusConfig[document.status].icon
+                    const config = getStatusConfig(document.status)
+                    const StatusIcon = config.icon
                     return (
                       <Card key={document.id} className="p-4">
                         <div className="flex items-start justify-between mb-3">
@@ -336,11 +344,11 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                             </div>
                           </div>
                           <Badge 
-                            variant={statusConfig[document.status].variant}
+                            variant={config.variant}
                             className="flex items-center gap-1"
                           >
                             <StatusIcon className="w-3 h-3" />
-                            {statusConfig[document.status].label}
+                            {config.label}
                           </Badge>
                         </div>
                         
