@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+									<DOCUMENT xmlns="cocotangki.xsd">
+									<COCOTANGKI>
+									<HEADER>
+										<KD_DOK>1</KD_DOK> 
+										<KD_TPS>DCMT</KD_TPS>
+										<NM_ANGKUT>MT. SINAR MOROTAI</NM_ANGKUT>
+										<NO_VOY_FLIGHT>36/24</NO_VOY_FLIGHT>
+										<CALL_SIGN></CALL_SIGN>
+										<TGL_TIBA>20250107</TGL_TIBA>
+										<KD_GUDANG>A016</KD_GUDANG>
+										<REF_NUMBER>SBB25-00013</REF_NUMBER>
+									</HEADER>
+									<DETIL>
+									<TANGKI>
+										<SERI_OUT>1</SERI_OUT>
+										<NO_BL_AWB>MRT36/24 - BTWMRK - 02</NO_BL_AWB>
+										<TGL_BL_AWB>20250101</TGL_BL_AWB>
+										<ID_CONSIGNEE>010017275052000</ID_CONSIGNEE>
+										<CONSIGNEE>KAO INDONESIA CHEMICALS</CONSIGNEE>
+										<NO_BC11>000025</NO_BC11>
+										<TGL_BC11>20250103</TGL_BC11>
+										<NO_POS_BC11>000100000000</NO_POS_BC11>
+										<NO_TANGKI>904</NO_TANGKI>
+										<JML_SATUAN>690149</JML_SATUAN>
+										<JNS_SATUAN>KGM</JNS_SATUAN>
+										<KD_DOK_INOUT>1</KD_DOK_INOUT>
+										<NO_DOK_INOUT>No.KM-79/WBC.07/2022</NO_DOK_INOUT>
+										<TGL_DOK_INOUT>2022068</TGL_DOK_INOUT>
+										<WK_INOUT>202501071113600</WK_INOUT>
+										<KD_SAR_ANGKUT_INOUT>3</KD_SAR_ANGKUT_INOUT>
+										<NO_POL></NO_POL>
+										<PEL_MUAT>MYBWH</PEL_MUAT>
+										<PEL_TRANSIT></PEL_TRANSIT>
+										<PEL_BONGKAR>IDMRK</PEL_BONGKAR>
+									</TANGKI>
+									</DETIL>
+									</COCOTANGKI>
+									</DOCUMENT>

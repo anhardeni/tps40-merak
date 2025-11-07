@@ -1,0 +1,22 @@
+
+   InvalidArgumentException 
+
+  Unexpected end of input
+
+  at vendor\psy\psysh\src\Shell.php:968
+    964▕ 
+    965▕         if (!$this->hasValidCode()) {
+    966▕             $this->popCodeStack();
+    967▕ 
+  ➜ 968▕             throw new \InvalidArgumentException('Unexpected end of input');
+    969▕         }
+    970▕     }
+    971▕ 
+    972▕     /**
+
+  1   vendor\psy\psysh\src\Shell.php:1497
+      Psy\Shell::setCode("dd(App\Models\Document::paginate(1)-")
+
+  2   vendor\laravel\tinker\src\Console\TinkerCommand.php:76
+      Psy\Shell::execute("dd(App\Models\Document::paginate(1)-")
+

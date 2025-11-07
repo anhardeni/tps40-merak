@@ -1,0 +1,277 @@
+<?php
+
+use App\Http\Controllers\ProfileController;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+
+Route::get('/', function () {
+    return Inertia::render('Welcome', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+        'laravelVersion' => Application::VERSION,
+        'phpVersion' => PHP_VERSION,
+    ]);
+});
+
+Route::get('/dashboard', function () {
+    return Inertia::render('Dashboard', [
+        'stats' => [
+            'totalDocuments' => \App\Models\Document::count(),
+            'totalTangki' => \App\Models\Tangki::count(),
+            'totalUsers' => \App\Models\User::count(),
+            'recentActivity' => \App\Models\Document::whereDate('created_at', today())->count(),
+        ]
+    ]);
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware('auth')->group(function () {
+    // Documents Routes - Using Resource Controller
+    Route::resource('documents', \App\Http\Controllers\DocumentController::class)->except(['destroy']);
+    Route::delete('/documents/{document}', [\App\Http\Controllers\DocumentController::class, 'destroy'])->name('documents.destroy');
+    Route::post('/documents/{document}/submit', [\App\Http\Controllers\DocumentController::class, 'submit'])->name('documents.submit');
+    
+    // Export Routes - Preview and Download XML/JSON
+    Route::prefix('api/export')->name('export.')->group(function () {
+        // XML exports - available for all authenticated users
+        Route::get('documents/{id}/preview/xml', [\App\Http\Controllers\Api\ExportController::class, 'previewXml'])->name('preview.xml');
+        Route::get('documents/{id}/download/xml', [\App\Http\Controllers\Api\ExportController::class, 'downloadXml'])->name('xml');
+        
+        // JSON exports - requires export.json permission
+        Route::middleware('permission:export.json')->group(function () {
+            Route::get('documents/{id}/preview/json', [\App\Http\Controllers\Api\ExportController::class, 'previewJson'])->name('preview.json');
+            Route::get('documents/{id}/download/json', [\App\Http\Controllers\Api\ExportController::class, 'downloadJson'])->name('json');
+        });
+        
+        // Bulk export and send to host - requires export.json permission
+        Route::middleware('permission:export.json')->group(function () {
+            Route::post('documents/bulk', [\App\Http\Controllers\Api\ExportController::class, 'bulkExport'])->name('bulk');
+            Route::post('documents/{id}/send-to-host', [\App\Http\Controllers\Api\ExportController::class, 'sendToHost'])->name('send-to-host');
+        });
+    });    // CoCoTangki Routes
+    Route::get('/cocotangki', function () {
+        $documents = \App\Models\Document::with(['nmAngkut', 'tangki'])
+            ->whereHas('tangki')
+            ->latest()
+            ->paginate(15);
+        
+        return Inertia::render('CoCoTangki/Index', [
+            'documents' => [
+                'data' => $documents->items(),
+                'meta' => [
+                    'current_page' => $documents->currentPage(),
+                    'from' => $documents->firstItem(),
+                    'last_page' => $documents->lastPage(),
+                    'per_page' => $documents->perPage(),
+                    'to' => $documents->lastItem(),
+                    'total' => $documents->total(),
+                ],
+                'links' => [
+                    'first' => $documents->url(1),
+                    'last' => $documents->url($documents->lastPage()),
+                    'prev' => $documents->previousPageUrl(),
+                    'next' => $documents->nextPageUrl(),
+                ],
+            ]
+        ]);
+    })->name('cocotangki.index');
+    
+    Route::get('/cocotangki/{id}', function ($id) {
+        $document = \App\Models\Document::with(['nmAngkut', 'tangki'])->findOrFail($id);
+        return Inertia::render('CoCoTangki/Show', ['document' => $document]);
+    })->name('cocotangki.show');
+    
+    // Logs Routes
+    Route::get('/logs', function () {
+        return Inertia::render('Logs/Index');
+    })->name('logs.index');
+    
+    Route::get('/logs/errors', function () {
+        return Inertia::render('Logs/Errors');
+    })->name('logs.errors');
+    
+    Route::get('/logs/soap', function () {
+        $logs = \App\Models\SoapLog::latest()->paginate(50);
+        
+        return Inertia::render('Logs/SoapLogs', [
+            'logs' => [
+                'data' => $logs->items(),
+                'meta' => [
+                    'current_page' => $logs->currentPage(),
+                    'from' => $logs->firstItem(),
+                    'last_page' => $logs->lastPage(),
+                    'per_page' => $logs->perPage(),
+                    'to' => $logs->lastItem(),
+                    'total' => $logs->total(),
+                ],
+                'links' => [
+                    'first' => $logs->url(1),
+                    'last' => $logs->url($logs->lastPage()),
+                    'prev' => $logs->previousPageUrl(),
+                    'next' => $logs->nextPageUrl(),
+                ],
+            ]
+        ]);
+    })->name('logs.soap');
+    
+    // Admin Routes (Requires manage.users permission)
+    Route::prefix('admin')->middleware('permission:manage.users')->group(function () {
+        Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
+        
+    Route::get('/roles', function () {
+        $roles = \App\Models\Role::with('permissions')->get();
+        return Inertia::render('Admin/Roles/Index', ['roles' => $roles]);
+    })->name('admin.roles.index');
+
+    Route::get('/roles/{role}/edit', function (\App\Models\Role $role) {
+        $role->load('permissions');
+        $allPermissions = \App\Models\Permission::orderBy('name')->get();
+        return Inertia::render('Admin/Roles/Edit', [
+            'role' => $role,
+            'allPermissions' => $allPermissions,
+        ]);
+    })->name('admin.roles.edit');
+
+    // Permission Management Routes
+    Route::resource('permissions', \App\Http\Controllers\Admin\PermissionController::class)
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->names([
+            'index' => 'admin.permissions.index',
+            'create' => 'admin.permissions.create',
+            'store' => 'admin.permissions.store',
+            'edit' => 'admin.permissions.edit',
+            'update' => 'admin.permissions.update',
+            'destroy' => 'admin.permissions.destroy',
+        ]);
+
+    // Role-Permission Assignment
+    Route::post('/roles/{role}/permissions', [\App\Http\Controllers\Admin\RolePermissionController::class, 'sync'])
+        ->name('admin.roles.permissions.sync');
+});    // Reference Data Routes (Requires manage.references permission)
+    Route::prefix('reference')->middleware('permission:manage.references')->group(function () {
+        // Kode Dokumen
+        Route::get('/kd-dok', function () {
+            $kdDoks = \App\Models\KdDok::latest()->paginate(15);
+            return Inertia::render('Reference/KdDok/Index', [
+                'kdDoks' => [
+                    'data' => $kdDoks->items(),
+                    'meta' => [
+                        'current_page' => $kdDoks->currentPage(),
+                        'from' => $kdDoks->firstItem(),
+                        'last_page' => $kdDoks->lastPage(),
+                        'per_page' => $kdDoks->perPage(),
+                        'to' => $kdDoks->lastItem(),
+                        'total' => $kdDoks->total(),
+                    ],
+                    'links' => [
+                        'first' => $kdDoks->url(1),
+                        'last' => $kdDoks->url($kdDoks->lastPage()),
+                        'prev' => $kdDoks->previousPageUrl(),
+                        'next' => $kdDoks->nextPageUrl(),
+                    ],
+                ]
+            ]);
+        })->name('reference.kd-dok.index');
+
+        // Kode TPS
+        Route::get('/kd-tps', function () {
+            $kdTps = \App\Models\KdTps::latest()->paginate(15);
+            return Inertia::render('Reference/KdTps/Index', [
+                'kdTps' => [
+                    'data' => $kdTps->items(),
+                    'meta' => [
+                        'current_page' => $kdTps->currentPage(),
+                        'from' => $kdTps->firstItem(),
+                        'last_page' => $kdTps->lastPage(),
+                        'per_page' => $kdTps->perPage(),
+                        'to' => $kdTps->lastItem(),
+                        'total' => $kdTps->total(),
+                    ],
+                    'links' => [
+                        'first' => $kdTps->url(1),
+                        'last' => $kdTps->url($kdTps->lastPage()),
+                        'prev' => $kdTps->previousPageUrl(),
+                        'next' => $kdTps->nextPageUrl(),
+                    ],
+                ]
+            ]);
+        })->name('reference.kd-tps.index');
+
+        // Kode Gudang
+        Route::get('/kd-gudang', function () {
+            $kdGudang = \App\Models\KdGudang::latest()->paginate(15);
+            return Inertia::render('Reference/KdGudang/Index', [
+                'kdGudang' => [
+                    'data' => $kdGudang->items(),
+                    'meta' => [
+                        'current_page' => $kdGudang->currentPage(),
+                        'from' => $kdGudang->firstItem(),
+                        'last_page' => $kdGudang->lastPage(),
+                        'per_page' => $kdGudang->perPage(),
+                        'to' => $kdGudang->lastItem(),
+                        'total' => $kdGudang->total(),
+                    ],
+                    'links' => [
+                        'first' => $kdGudang->url(1),
+                        'last' => $kdGudang->url($kdGudang->lastPage()),
+                        'prev' => $kdGudang->previousPageUrl(),
+                        'next' => $kdGudang->nextPageUrl(),
+                    ],
+                ]
+            ]);
+        })->name('reference.kd-gudang.index');
+
+        // Nama Angkutan
+        Route::get('/nm-angkut', function () {
+            $nmAngkut = \App\Models\NmAngkut::latest()->paginate(15);
+            return Inertia::render('Reference/NmAngkut/Index', [
+                'nmAngkut' => [
+                    'data' => $nmAngkut->items(),
+                    'meta' => [
+                        'current_page' => $nmAngkut->currentPage(),
+                        'from' => $nmAngkut->firstItem(),
+                        'last_page' => $nmAngkut->lastPage(),
+                        'per_page' => $nmAngkut->perPage(),
+                        'to' => $nmAngkut->lastItem(),
+                        'total' => $nmAngkut->total(),
+                    ],
+                    'links' => [
+                        'first' => $nmAngkut->url(1),
+                        'last' => $nmAngkut->url($nmAngkut->lastPage()),
+                        'prev' => $nmAngkut->previousPageUrl(),
+                        'next' => $nmAngkut->nextPageUrl(),
+                    ],
+                ]
+            ]);
+        })->name('reference.nm-angkut.index');
+    });
+
+    // Settings Routes
+    Route::prefix('settings')->group(function () {
+        Route::get('/beacukai-credentials', function () {
+            $credentials = \App\Models\BeacukaiCredential::all();
+            return Inertia::render('Settings/BeacukaiCredentials/Index', ['credentials' => $credentials]);
+        })->name('settings.beacukai-credentials.index');
+        
+        Route::get('/beacukai-credentials/create', function () {
+            return Inertia::render('Settings/BeacukaiCredentials/Create');
+        })->name('settings.beacukai-credentials.create');
+        
+        Route::get('/beacukai-credentials/{id}/edit', function ($id) {
+            $credential = \App\Models\BeacukaiCredential::findOrFail($id);
+            return Inertia::render('Settings/BeacukaiCredentials/Edit', ['credential' => $credential]);
+        })->name('settings.beacukai-credentials.edit');
+        
+        Route::get('/appearance', function () {
+            return Inertia::render('Settings/Appearance');
+        })->name('settings.appearance');
+    });
+    
+    // Profile Routes
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+require __DIR__.'/auth.php';
+
