@@ -11,6 +11,7 @@ interface CreateDocumentProps {
     kdTps: Array<{ kd_tps: string; nm_tps: string }>
     nmAngkut: Array<{ id: number; nm_angkut: string; call_sign?: string }>
     kdGudang: Array<{ kd_gudang: string; nm_gudang: string }>
+    kdDokInout: Array<{ kd_dok_inout: string; nm_dok_inout: string; jenis?: string }>
   }
 }
 
