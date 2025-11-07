@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Document;
 use App\Models\KdDok;
+use App\Models\KdDokInout;
 use App\Models\KdGudang;
 use App\Models\KdTps;
 use App\Models\NmAngkut;
@@ -388,6 +389,7 @@ class DocumentController extends Controller
             'kdTps' => KdTps::select('kd_tps', 'nm_tps')->get(),
             'nmAngkut' => NmAngkut::select('id', 'nm_angkut', 'call_sign')->get(),
             'kdGudang' => KdGudang::select('kd_gudang', 'nm_gudang')->get(),
+            'kdDokInout' => KdDokInout::select('kd_dok_inout', 'nm_dok_inout', 'jenis')->where('is_active', true)->get(),
         ];
     }
 }

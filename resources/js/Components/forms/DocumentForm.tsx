@@ -27,6 +27,7 @@ const documentSchema = z.object({
   jam_gate_out: z.string().optional(),
   keterangan: z.string().optional(),
   tangki: z.array(z.object({
+    kd_dok_inout: z.string().min(1, 'Kode dokumen IN/OUT wajib dipilih'),
     no_tangki: z.string().min(1, 'Nomor tangki wajib diisi'),
     seri_out: z.number().optional(),
     no_bl_awb: z.string().optional(),
@@ -38,7 +39,6 @@ const documentSchema = z.object({
     no_pos_bc11: z.string().optional(),
     jml_satuan: z.number().optional(),
     jns_satuan: z.string().optional(),
-    kd_dok_inout: z.string().optional(),
     no_dok_inout: z.string().optional(),
     tgl_dok_inout: z.string().optional(),
     kd_sar_angkut_inout: z.string().optional(),
@@ -76,6 +76,7 @@ interface DocumentFormProps {
     kdTps: Array<{ kd_tps: string; nm_tps: string }>
     nmAngkut: Array<{ id: number; nm_angkut: string; call_sign?: string }>
     kdGudang: Array<{ kd_gudang: string; nm_gudang: string }>
+    kdDokInout: Array<{ kd_dok_inout: string; nm_dok_inout: string; jenis?: string }>
   }
   onSubmit: (data: DocumentFormData) => void
   isLoading?: boolean
@@ -167,6 +168,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
   const addTangki = () => {
     append({
+      kd_dok_inout: '',
       no_tangki: '',
       no_bl_awb: '',
       tgl_bl_awb: '',
@@ -423,6 +425,24 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Basic Tangki Info */}
                   <div className="space-y-2">
+                    <Label>Kode Dok IN/OUT *</Label>
+                    <select
+                      {...register(`tangki.${index}.kd_dok_inout` as const)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">Pilih Kode Dok IN/OUT</option>
+                      {referenceData.kdDokInout?.map((item) => (
+                        <option key={item.kd_dok_inout} value={item.kd_dok_inout}>
+                          {item.kd_dok_inout} - {item.nm_dok_inout} {item.jenis ? `(${item.jenis})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.tangki?.[index]?.kd_dok_inout && (
+                      <p className="text-sm text-red-500">{errors.tangki[index].kd_dok_inout.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
                     <Label>No. Tangki *</Label>
                     <Input
                       {...register(`tangki.${index}.no_tangki` as const)}
@@ -438,10 +458,13 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     <Input
                       type="number"
                       {...register(`tangki.${index}.seri_out` as const, {
-                        setValueAs: (v: any) => v === '' ? 0 : parseInt(v)
+                        setValueAs: (v: any) => v === '' ? undefined : parseInt(v)
                       })}
-                      placeholder="Nomor seri keluar"
+                      placeholder="Auto-generated"
+                      className="bg-gray-50 dark:bg-gray-800"
+                      readOnly
                     />
+                    <p className="text-xs text-gray-500">Otomatis diisi oleh sistem</p>
                   </div>
 
                   <div className="space-y-2">
