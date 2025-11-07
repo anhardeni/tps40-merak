@@ -135,7 +135,7 @@ class Document extends Model
         return $query->whereBetween('tgl_entry', [$startDate, $endDate]);
     }
 
-    // Boot method to auto-generate ref_number
+    // Boot method to auto-generate ref_number and auto-fill audit fields
     protected static function boot()
     {
         parent::boot();
@@ -143,6 +143,16 @@ class Document extends Model
         static::creating(function ($model) {
             if (empty($model->ref_number)) {
                 $model->ref_number = static::generateRefNumber();
+            }
+
+            if (auth()->check() && empty($model->created_by)) {
+                $model->created_by = auth()->id();
+            }
+        });
+
+        static::updating(function ($model) {
+            if (auth()->check()) {
+                $model->updated_by = auth()->id();
             }
         });
     }
