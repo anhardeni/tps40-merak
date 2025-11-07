@@ -174,10 +174,25 @@ Aplikasi TPS (Tempat Penimbunan Sementara) Online adalah sistem manajemen dokume
 - `username`, `submitted_at` - Audit fields
 
 #### tangki (Detail per dokumen)
-- `no_tangki`, `jenis_isi`, `kapasitas`, `jumlah_isi` - Core info
+- `document_id` - Foreign key ke documents
+- `kd_dok_inout` - Foreign key ke kd_dok_inout (MANDATORY) - jenis IN/OUT
+- `no_tangki` - Nomor tangki fisik (bisa sama untuk multiple entries)
+- `seri_out` - Urutan kegiatan tangki (sequence number)
+- **UNIQUE constraint**: `no_tangki + seri_out` (kombinasi harus unique)
+- `jenis_isi`, `kapasitas`, `jumlah_isi` - Core info
 - `no_bl_awb`, `consignee`, `no_bc11` - Shipping details
 - `pel_muat`, `pel_transit`, `pel_bongkar` - Port information
 - `kondisi`, `lokasi_penempatan` - Status fields
+- `created_at`, `updated_at` - Auto timestamps
+- `created_by`, `updated_by` - Audit fields
+
+**Contoh Multiple Entries:**
+```
+Tangki T-001:
+- Entry 1: no_tangki='T-001', seri_out=1, kd_dok_inout='IN' (masuk)
+- Entry 2: no_tangki='T-001', seri_out=2, kd_dok_inout='OUT' (keluar)
+- Entry 3: no_tangki='T-001', seri_out=3, kd_dok_inout='IN' (masuk lagi)
+```
 
 #### Reference Tables
 - `kd_dok` - Kode dokumen
