@@ -80,6 +80,85 @@ Aplikasi TPS (Tempat Penimbunan Sementara) Online adalah sistem manajemen dokume
    - 🔄 Batch operations
    - 🔄 Email notifications
 
+### 📝 TODO List (Priority)
+
+1. **🔧 Database Schema Fix**
+   - 🔴 Perbaikan relasi tabel di tangki
+   - Review foreign keys dan relationships
+   - Optimize database constraints
+
+2. **🎨 UI/UX Improvements**
+   - 🔴 Update tampilan form tangki dengan elemen baru
+   - Improve user experience untuk input data tangki
+   - Add validation feedback yang lebih baik
+
+3. **📊 Business Process Update**
+   - 🔴 Review dan update workflow proses bisnis
+   - Diskusi requirement baru dari stakeholder
+   - Update status dan approval flow
+
+## 🔄 Updated Business Process Flow
+
+### Document Lifecycle with Re-submission
+
+```
+1. DRAFT
+   └─> User creates document & tangki
+   └─> Can freely edit/add/delete tangki
+   └─> Submit button available
+       ↓
+2. PENDING_APPROVAL
+   └─> Waiting for supervisor/manager approval
+   └─> Read-only (cannot edit)
+   └─> Can be approved or rejected
+       ↓
+3a. APPROVED → Ready to send to Bea Cukai
+       ↓
+4. SENT_TO_BEACUKAI
+   └─> Transmitted via SOAP/API
+   └─> Waiting for response
+   └─> Read-only
+       ↓
+5. COMPLETED
+   └─> Successfully processed by Bea Cukai
+   └─> **CAN BE UNLOCKED FOR EDITING**
+   └─> "Edit Tangki" button available
+       ↓
+6. [CYCLE REPEATS] Edit tangki → PENDING_APPROVAL → APPROVED → SENT → COMPLETED
+
+3b. REJECTED
+   └─> Back to DRAFT
+   └─> User can revise and resubmit
+```
+
+### Key Features:
+
+**✅ Post-Completion Editing**
+- Documents in COMPLETED status can be unlocked for editing
+- Full CRUD on tangki (create, edit, delete)
+- Simple overwrite strategy (no versioning)
+- Changes tracked in audit log
+
+**✅ Approval Workflow**
+- Every re-submission requires approval
+- Supervisor/Manager must review changes
+- Can approve or reject modifications
+
+**✅ Unlimited Re-submissions**
+- No limit on how many times document can be edited
+- Each edit cycle follows same approval flow
+- Full audit trail maintained
+
+**✅ Audit Logging**
+- Track all tangki changes (insert/update/delete)
+- Record who made changes and when
+- Store before/after values
+- Maintain complete history
+
+**❌ No Notifications**
+- No email or in-app notifications
+- Users check status manually
+
 ## 🗃️ Database Schema
 
 ### Core Tables
@@ -88,7 +167,10 @@ Aplikasi TPS (Tempat Penimbunan Sementara) Online adalah sistem manajemen dokume
 - `ref_number` - Auto-generated AAAAYYMMDDNNNNNN
 - `kd_dok`, `kd_tps`, `nm_angkut_id`, `kd_gudang` - Foreign keys ke tabel referensi
 - `no_pol`, `no_voy_flight`, `tgl_entry`, `tgl_tiba`, dll - Header fields
-- `status` - DRAFT, SUBMITTED, APPROVED, REJECTED
+- `status` - DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, SENT_TO_BEACUKAI, COMPLETED
+- `is_locked` - Boolean flag untuk edit protection
+- `last_sent_at` - Timestamp terakhir kirim ke Bea Cukai
+- `completed_at` - Timestamp saat completed
 - `username`, `submitted_at` - Audit fields
 
 #### tangki (Detail per dokumen)
@@ -282,10 +364,19 @@ php artisan test --testsuite=Feature
 
 ### Document Status Workflow
 
-1. **DRAFT** - Editable, can add/remove tangki
-2. **SUBMITTED** - Under review, read-only
-3. **APPROVED** - Final, can export XML/JSON
-4. **REJECTED** - Back to draft for revision
+1. **DRAFT** - Editable, can add/remove tangki freely
+2. **PENDING_APPROVAL** - Waiting for supervisor approval, read-only
+3. **APPROVED** - Approved by supervisor, ready to send to Bea Cukai
+4. **SENT_TO_BEACUKAI** - Transmitted to Bea Cukai, waiting response
+5. **COMPLETED** - Successfully processed, can be unlocked for editing
+6. **REJECTED** - Rejected by supervisor, back to DRAFT for revision
+
+**Post-Completion Flow:**
+- COMPLETED documents can be unlocked
+- Edit/add/delete tangki as needed
+- Re-submit → goes through approval again → can be sent again
+- Cycle can repeat unlimited times
+- Full audit trail maintained
 
 ### XML/JSON Export
 
