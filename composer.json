@@ -15,6 +15,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "laravel/wayfinder": "^0.1.9",
+        "maatwebsite/excel": "^3.1",
         "rap2hpoutre/laravel-log-viewer": "^2.5",
         "tightenco/ziggy": "^2.0"
     },

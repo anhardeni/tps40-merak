@@ -10,6 +10,14 @@ class NmAngkut extends Model
 
     protected $fillable = [
         'nm_angkut',
+        'call_sign',
+        'jenis_angkutan',
+        'bendera',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     public $timestamps = true;

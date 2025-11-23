@@ -81,7 +81,7 @@ class KdSarAngkutInoutController extends Controller
 
         KdSarAngkutInout::create($validated);
 
-        return redirect()->route('reference.kd-sar-angkut-inout.index')
+        return redirect()->route('kd-sar-angkut-inout.index')
             ->with('success', 'Kode sarana angkut berhasil ditambahkan');
     }
 

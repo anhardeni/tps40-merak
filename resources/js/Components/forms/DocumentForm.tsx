@@ -8,7 +8,7 @@ import { Label } from "@/Components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card"
 import { Select } from "@/Components/ui/select"
 import { Textarea } from "@/Components/ui/textarea"
-import { Plus, Trash2, Save, Download, Send } from "lucide-react"
+import { Plus, Trash2, Save, Download, Send, FileSpreadsheet } from "lucide-react"
 import { router } from '@inertiajs/react'
 
 // Validation schema
@@ -75,8 +75,11 @@ interface DocumentFormProps {
     kdDok: Array<{ kd_dok: string; nm_dok: string }>
     kdTps: Array<{ kd_tps: string; nm_tps: string }>
     nmAngkut: Array<{ id: number; nm_angkut: string; call_sign?: string }>
-    kdGudang: Array<{ kd_gudang: string; nm_gudang: string }>
+    // include kd_tps property so frontend can filter gudang by selected TPS
+    kdGudang: Array<{ kd_gudang: string; nm_gudang: string; kd_tps?: string }>
     kdDokInout: Array<{ kd_dok_inout: string; nm_dok_inout: string; jenis?: string }>
+    jenisSatuan: Array<{ kode_satuan_barang: string; nama_satuan_barang: string }>
+    jenisKemasan: Array<{ kode_jenis_kemasan: string; nama_jenis_kemasan: string }>
   }
   onSubmit: (data: DocumentFormData) => void
   isLoading?: boolean
@@ -157,6 +160,109 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
     name: "tangki"
   })
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const response = await fetch('/documents/parse-tangki-excel', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+
+      const result = await response.json()
+      if (result.success && Array.isArray(result.data)) {
+        const newTangkis = result.data.map((item: any) => ({
+          kd_dok_inout: item.kd_dok_inout || '',
+          no_tangki: item.no_tangki || '',
+          seri_out: item.seri_out || 0,
+          no_bl_awb: item.no_bl_awb || '',
+          tgl_bl_awb: item.tgl_bl_awb || '',
+          id_consignee: item.id_consignee || '',
+          consignee: item.consignee || '',
+          no_bc11: item.no_bc11 || '',
+          tgl_bc11: item.tgl_bc11 || '',
+          no_pos_bc11: item.no_pos_bc11 || '',
+          jml_satuan: item.jml_satuan || 0,
+          jns_satuan: item.jns_satuan || '',
+          no_dok_inout: item.no_dok_inout || '',
+          tgl_dok_inout: item.tgl_dok_inout || '',
+          kd_sar_angkut_inout: item.kd_sar_angkut_inout || '',
+          no_pol: item.no_pol || '',
+          jenis_isi: item.jenis_isi || '',
+          jenis_kemasan: item.jenis_kemasan || '',
+          kapasitas: item.kapasitas || 0,
+          jumlah_isi: item.jumlah_isi || 0,
+          satuan: item.satuan || 'LITER',
+          panjang: item.panjang || 0,
+          lebar: item.lebar || 0,
+          tinggi: item.tinggi || 0,
+          berat_kosong: item.berat_kosong || 0,
+          berat_isi: item.berat_isi || 0,
+          kondisi: item.kondisi || 'BAIK',
+          keterangan: item.keterangan || '',
+          tgl_produksi: item.tgl_produksi || '',
+          tgl_expired: item.tgl_expired || '',
+          no_segel_bc: item.no_segel_bc || '',
+          no_segel_perusahaan: item.no_segel_perusahaan || '',
+          lokasi_penempatan: item.lokasi_penempatan || '',
+          wk_inout: item.wk_inout || '',
+          pel_muat: item.pel_muat || '',
+          pel_transit: item.pel_transit || '',
+          pel_bongkar: item.pel_bongkar || '',
+        }))
+
+        if (fields.length === 1 && !fields[0].no_tangki) {
+          remove(0)
+        }
+
+        append(newTangkis)
+        alert(`Berhasil mengimport ${newTangkis.length} data tangki.`)
+      } else {
+        alert('Gagal memproses file: ' + (result.message || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      alert('Terjadi kesalahan saat mengupload file.')
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  // watch selected TPS and current selected gudang to implement dependent dropdown
+  const selectedKdTps = watch('kd_tps')
+  const selectedKdGudang = watch('kd_gudang')
+
+  // compute filtered gudang options based on selected TPS
+  const filteredKdGudang = referenceData.kdGudang.filter((g) => {
+    if (!selectedKdTps) return true // no TPS selected -> show all
+    return g.kd_tps === selectedKdTps
+  })
+
+  // if the currently selected gudang is not present in filtered options, clear it
+  useEffect(() => {
+    if (!selectedKdGudang) return
+    const stillValid = filteredKdGudang.some((g) => g.kd_gudang === selectedKdGudang)
+    if (!stillValid) {
+      setValue('kd_gudang', '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKdTps])
+
   const handleFormSubmit = async (data: DocumentFormData) => {
     setIsSubmitting(true)
     try {
@@ -170,6 +276,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
     append({
       kd_dok_inout: '',
       no_tangki: '',
+      seri_out: 0,
       no_bl_awb: '',
       tgl_bl_awb: '',
       id_consignee: '',
@@ -177,6 +284,12 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
       no_bc11: '',
       tgl_bc11: '',
       no_pos_bc11: '',
+      jml_satuan: 0,
+      jns_satuan: '',
+      no_dok_inout: '',
+      tgl_dok_inout: '',
+      kd_sar_angkut_inout: '',
+      no_pol: '',
       jenis_isi: '',
       jenis_kemasan: '',
       kapasitas: 0,
@@ -297,7 +410,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                 className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
               >
                 <option value="">Pilih Kode Gudang</option>
-                {referenceData.kdGudang.map((item) => (
+                {filteredKdGudang.map((item) => (
                   <option key={item.kd_gudang} value={item.kd_gudang}>
                     {item.kd_gudang} - {item.nm_gudang}
                   </option>
@@ -394,15 +507,33 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Detail Tangki</CardTitle>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addTangki}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Tambah Tangki
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Import Excel
+                </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleFileUpload}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addTangki}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tambah Tangki
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -524,14 +655,6 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   </div>
 
                   {/* Dokumen Inout Section */}
-                  <div className="space-y-2">
-                    <Label>Kode Dokumen Inout</Label>
-                    <Input
-                      {...register(`tangki.${index}.kd_dok_inout` as const)}
-                      placeholder="Kode dokumen in/out"
-                      maxLength={10}
-                    />
-                  </div>
 
                   <div className="space-y-2">
                     <Label>No. Dokumen Inout</Label>
@@ -582,10 +705,17 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
                   <div className="space-y-2">
                     <Label>Jenis Kemasan</Label>
-                    <Input
+                    <select
                       {...register(`tangki.${index}.jenis_kemasan` as const)}
-                      placeholder="Masukkan jenis kemasan"
-                    />
+                      className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
+                    >
+                      <option value="">Pilih Jenis Kemasan</option>
+                      {referenceData.jenisKemasan?.map((item) => (
+                        <option key={item.kode_jenis_kemasan} value={item.kode_jenis_kemasan}>
+                          {item.kode_jenis_kemasan} - {item.nama_jenis_kemasan}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="space-y-2">
@@ -638,11 +768,17 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
                   <div className="space-y-2">
                     <Label>Jenis Satuan</Label>
-                    <Input
+                    <select
                       {...register(`tangki.${index}.jns_satuan` as const)}
-                      placeholder="Jenis satuan"
-                      maxLength={10}
-                    />
+                      className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
+                    >
+                      <option value="">Pilih Jenis Satuan</option>
+                      {referenceData.jenisSatuan?.map((item) => (
+                        <option key={item.kode_satuan_barang} value={item.kode_satuan_barang}>
+                          {item.kode_satuan_barang} - {item.nama_satuan_barang}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Pelabuhan Info */}
@@ -684,9 +820,9 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                 </div>
 
                 {/* Dimensi dan Berat */}
-                <details className="space-y-4">
-                  <summary className="cursor-pointer font-medium">Dimensi & Berat (Opsional)</summary>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+                <div className="space-y-4 border-t pt-4 mt-4">
+                  <h5 className="font-medium text-sm text-slate-500 dark:text-slate-400">Dimensi & Berat</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Panjang (m)</Label>
                       <Input
@@ -756,6 +892,14 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     </div>
 
                     <div className="space-y-2">
+                      <Label>Waktu In/Out</Label>
+                      <Input
+                        type="datetime-local"
+                        {...register(`tangki.${index}.wk_inout` as const)}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
                       <Label>Tgl. Produksi</Label>
                       <Input
                         type="date"
@@ -796,7 +940,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                       />
                     </div>
                   </div>
-                </details>
+                </div>
               </div>
             ))}
           </CardContent>

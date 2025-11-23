@@ -1,13 +1,16 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { Head } from '@inertiajs/react'
 import { router } from '@inertiajs/react'
 import AppLayout from '@/Layouts/app-layout'
 import { Button } from "@/Components/ui/button"
+import { Input } from '@/Components/ui/input'
+import { Label } from '@/Components/ui/label'
+import { Dialog, DialogTrigger, DialogContent, DialogTitle } from '@/Components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card"
 import { Badge } from "@/Components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select"
 import { PageProps } from '@/types'
-import { 
+import {
   Edit,
   Download,
   Send,
@@ -17,7 +20,8 @@ import {
   ArrowLeft,
   Eye,
   FileJson,
-  Upload
+  Upload,
+  FileSpreadsheet
 } from "lucide-react"
 
 interface Document {
@@ -80,6 +84,9 @@ interface Document {
 
 interface ShowDocumentProps extends PageProps {
   document: Document
+  kdDokInout?: Array<{ kd_dok_inout: string; nm_dok_inout: string; jenis?: string }>
+  jenisSatuan?: Array<{ kode_satuan_barang: string; nama_satuan_barang: string }>
+  jenisKemasan?: Array<{ kode_jenis_kemasan: string; nama_jenis_kemasan: string }>
 }
 
 const statusConfig = {
@@ -90,13 +97,96 @@ const statusConfig = {
   completed: { label: 'Selesai', variant: 'success' as const, icon: CheckCircle }
 };
 
-export default function ShowDocument({ auth, document }: ShowDocumentProps) {
+export default function ShowDocument({ auth, document, kdDokInout, jenisSatuan, jenisKemasan }: ShowDocumentProps) {
   const StatusIcon = statusConfig[document.status].icon
   const [transmissionFormat, setTransmissionFormat] = useState<'xml' | 'json'>('xml')
   const [isSending, setIsSending] = useState(false)
   const [isResending, setIsResending] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [transmissionHistory, setTransmissionHistory] = useState<any[]>([])
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [isAdding, setIsAdding] = useState(false)
+  const [newTangki, setNewTangki] = useState({
+    kd_dok_inout: '',
+    no_tangki: '',
+    jenis_isi: '',
+    kapasitas: 0,
+    jumlah_isi: 0,
+    satuan: 'LITER',
+    kondisi: 'BAIK',
+    no_bl_awb: '',
+    no_pol: '',
+    keterangan: '',
+    // New fields
+    seri_out: 0,
+    tgl_bl_awb: '',
+    id_consignee: '',
+    consignee: '',
+    no_bc11: '',
+    tgl_bc11: '',
+    no_pos_bc11: '',
+    no_dok_inout: '',
+    tgl_dok_inout: '',
+    kd_sar_angkut_inout: '',
+    jenis_kemasan: '',
+    jml_satuan: 0,
+    jns_satuan: '',
+    pel_muat: '',
+    pel_transit: '',
+    pel_bongkar: '',
+    panjang: 0,
+    lebar: 0,
+    tinggi: 0,
+    berat_kosong: 0,
+    berat_isi: 0,
+    lokasi_penempatan: '',
+    wk_inout: '',
+    tgl_produksi: '',
+    tgl_expired: '',
+    no_segel_bc: '',
+    no_segel_perusahaan: '',
+  })
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImportTangki = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!confirm('Apakah Anda yakin ingin mengimport data tangki dari file ini? Data akan ditambahkan ke dokumen ini.')) {
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const response = await fetch(`/documents/${document.id}/import-tangki`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+        },
+      })
+
+      const result = await response.json()
+
+      if (response.ok && result.success) {
+        alert(`Berhasil mengimport ${result.count} data tangki.`)
+        router.reload({ only: ['document'] })
+      } else {
+        alert('Gagal mengimport file: ' + (result.message || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Error importing file:', error)
+      alert('Terjadi kesalahan saat mengimport file.')
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
 
   const handleSubmit = () => {
     if (confirm('Apakah Anda yakin ingin submit dokumen ini?')) {
@@ -179,8 +269,8 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="sm"
               onClick={() => router.get('/documents')}
             >
@@ -192,7 +282,7 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                 {document.ref_number}
               </h1>
               <div className="flex items-center gap-2 mt-2">
-                <Badge 
+                <Badge
                   variant={statusConfig[document.status].variant}
                   className="flex items-center gap-1"
                 >
@@ -216,7 +306,7 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
                 </Button>
-                
+
                 <Button
                   onClick={handleSubmit}
                 >
@@ -225,7 +315,7 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                 </Button>
               </>
             )}
-            
+
             <Button
               variant="outline"
               onClick={() => window.open(`/api/export/documents/${document.id}/preview/xml`, '_blank')}
@@ -241,76 +331,364 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
               Download XML
             </Button>
 
-            {(auth.user.roles?.some((role) => role.name === 'admin') || 
-              auth.user.roles?.some((role) => 
-                role.permissions?.some((perm) => perm.name === 'export.json')
-              )
-            ) && (
+            {/* Add Tangki modal trigger - available for Draft or Submitted documents */}
+            {(document.status === 'draft' || document.status === 'submitted') && (
               <>
                 <Button
                   variant="outline"
-                  onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  <FileJson className="w-4 h-4 mr-2" />
-                  Preview JSON
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Import Excel
                 </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleImportTangki}
+                />
+                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">Tambah Tangki</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogTitle>Tambah Tangki</DialogTitle>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                      {/* Basic Info */}
+                      <div className="space-y-2">
+                        <Label>No. Tangki *</Label>
+                        <Input value={newTangki.no_tangki} onChange={(e) => setNewTangki({ ...newTangki, no_tangki: e.target.value })} placeholder="Nomor tangki" />
+                      </div>
 
-                <Button
-                  variant="outline"
-                  onClick={() => window.open(`/api/export/documents/${document.id}/download/json`, '_blank')}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download JSON
-                </Button>
+                      <div className="space-y-2">
+                        <Label>Kode Dok IN/OUT *</Label>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
+                          value={newTangki.kd_dok_inout}
+                          onChange={(e) => setNewTangki({ ...newTangki, kd_dok_inout: e.target.value })}
+                        >
+                          <option value="">Pilih Kode Dok IN/OUT</option>
+                          {kdDokInout?.map((item) => (
+                            <option key={item.kd_dok_inout} value={item.kd_dok_inout}>
+                              {item.kd_dok_inout} - {item.nm_dok_inout} {item.jenis ? `(${item.jenis})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                {/* Send to Host with Format Selection */}
-                {document.status === 'approved' && (
-                  <div className="flex items-center gap-2 ml-2 pl-2 border-l">
-                    <Select value={transmissionFormat} onValueChange={(value: 'xml' | 'json') => setTransmissionFormat(value)}>
-                      <SelectTrigger className="w-[110px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="xml">Format XML</SelectItem>
-                        <SelectItem value="json">Format JSON</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    {/* @ts-ignore - sent_to_host may not be in type */}
-                    {!document.sent_to_host ? (
-                      <Button
-                        onClick={handleSendToHost}
-                        disabled={isSending}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {isSending ? 'Mengirim...' : 'Send to Host'}
+                      <div className="space-y-2">
+                        <Label>Jenis Isi *</Label>
+                        <Input value={newTangki.jenis_isi} onChange={(e) => setNewTangki({ ...newTangki, jenis_isi: e.target.value })} placeholder="Jenis isi" />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Jenis Kemasan</Label>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
+                          value={newTangki.jenis_kemasan}
+                          onChange={(e) => setNewTangki({ ...newTangki, jenis_kemasan: e.target.value })}
+                        >
+                          <option value="">Pilih Jenis Kemasan</option>
+                          {jenisKemasan?.map((item) => (
+                            <option key={item.kode_jenis_kemasan} value={item.kode_jenis_kemasan}>
+                              {item.kode_jenis_kemasan} - {item.nama_jenis_kemasan}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Kapasitas *</Label>
+                        <Input type="number" step="0.001" value={newTangki.kapasitas} onChange={(e) => setNewTangki({ ...newTangki, kapasitas: parseFloat(e.target.value || '0') })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Jumlah Isi *</Label>
+                        <Input type="number" step="0.001" value={newTangki.jumlah_isi} onChange={(e) => setNewTangki({ ...newTangki, jumlah_isi: parseFloat(e.target.value || '0') })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Satuan *</Label>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
+                          value={newTangki.satuan}
+                          onChange={(e) => setNewTangki({ ...newTangki, satuan: e.target.value })}
+                        >
+                          <option value="LITER">LITER</option>
+                          <option value="KGM">KGM</option>
+                          <option value="M3">M3</option>
+                          <option value="TON">TON</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Jumlah Satuan</Label>
+                        <Input type="number" value={newTangki.jml_satuan} onChange={(e) => setNewTangki({ ...newTangki, jml_satuan: parseFloat(e.target.value || '0') })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Jenis Satuan</Label>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
+                          value={newTangki.jns_satuan}
+                          onChange={(e) => setNewTangki({ ...newTangki, jns_satuan: e.target.value })}
+                        >
+                          <option value="">Pilih Jenis Satuan</option>
+                          {jenisSatuan?.map((item) => (
+                            <option key={item.kode_satuan_barang} value={item.kode_satuan_barang}>
+                              {item.kode_satuan_barang} - {item.nama_satuan_barang}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Kondisi *</Label>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
+                          value={newTangki.kondisi}
+                          onChange={(e) => setNewTangki({ ...newTangki, kondisi: e.target.value })}
+                        >
+                          <option value="BAIK">BAIK</option>
+                          <option value="RUSAK">RUSAK</option>
+                          <option value="BOCOR">BOCOR</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>No. BL/AWB</Label>
+                        <Input value={newTangki.no_bl_awb} onChange={(e) => setNewTangki({ ...newTangki, no_bl_awb: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Tgl. BL/AWB</Label>
+                        <Input type="date" value={newTangki.tgl_bl_awb} onChange={(e) => setNewTangki({ ...newTangki, tgl_bl_awb: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>ID Consignee</Label>
+                        <Input value={newTangki.id_consignee} onChange={(e) => setNewTangki({ ...newTangki, id_consignee: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Consignee</Label>
+                        <Input value={newTangki.consignee} onChange={(e) => setNewTangki({ ...newTangki, consignee: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>No. BC11</Label>
+                        <Input value={newTangki.no_bc11} onChange={(e) => setNewTangki({ ...newTangki, no_bc11: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Tgl. BC11</Label>
+                        <Input type="date" value={newTangki.tgl_bc11} onChange={(e) => setNewTangki({ ...newTangki, tgl_bc11: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>No. Pos BC11</Label>
+                        <Input value={newTangki.no_pos_bc11} onChange={(e) => setNewTangki({ ...newTangki, no_pos_bc11: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>No. Dok In/Out</Label>
+                        <Input value={newTangki.no_dok_inout} onChange={(e) => setNewTangki({ ...newTangki, no_dok_inout: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Tgl. Dok In/Out</Label>
+                        <Input type="date" value={newTangki.tgl_dok_inout} onChange={(e) => setNewTangki({ ...newTangki, tgl_dok_inout: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Kode Sarana Angkut</Label>
+                        <Input value={newTangki.kd_sar_angkut_inout} onChange={(e) => setNewTangki({ ...newTangki, kd_sar_angkut_inout: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>No. Polisi</Label>
+                        <Input value={newTangki.no_pol} onChange={(e) => setNewTangki({ ...newTangki, no_pol: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Pelabuhan Muat</Label>
+                        <Input value={newTangki.pel_muat} onChange={(e) => setNewTangki({ ...newTangki, pel_muat: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Pelabuhan Transit</Label>
+                        <Input value={newTangki.pel_transit} onChange={(e) => setNewTangki({ ...newTangki, pel_transit: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Pelabuhan Bongkar</Label>
+                        <Input value={newTangki.pel_bongkar} onChange={(e) => setNewTangki({ ...newTangki, pel_bongkar: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Panjang (m)</Label>
+                        <Input type="number" step="0.01" value={newTangki.panjang} onChange={(e) => setNewTangki({ ...newTangki, panjang: parseFloat(e.target.value || '0') })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Lebar (m)</Label>
+                        <Input type="number" step="0.01" value={newTangki.lebar} onChange={(e) => setNewTangki({ ...newTangki, lebar: parseFloat(e.target.value || '0') })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Tinggi (m)</Label>
+                        <Input type="number" step="0.01" value={newTangki.tinggi} onChange={(e) => setNewTangki({ ...newTangki, tinggi: parseFloat(e.target.value || '0') })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Berat Kosong (kg)</Label>
+                        <Input type="number" step="0.01" value={newTangki.berat_kosong} onChange={(e) => setNewTangki({ ...newTangki, berat_kosong: parseFloat(e.target.value || '0') })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Berat Isi (kg)</Label>
+                        <Input type="number" step="0.01" value={newTangki.berat_isi} onChange={(e) => setNewTangki({ ...newTangki, berat_isi: parseFloat(e.target.value || '0') })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Lokasi Penempatan</Label>
+                        <Input value={newTangki.lokasi_penempatan} onChange={(e) => setNewTangki({ ...newTangki, lokasi_penempatan: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Waktu In/Out</Label>
+                        <Input type="datetime-local" value={newTangki.wk_inout} onChange={(e) => setNewTangki({ ...newTangki, wk_inout: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Tgl. Produksi</Label>
+                        <Input type="date" value={newTangki.tgl_produksi} onChange={(e) => setNewTangki({ ...newTangki, tgl_produksi: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Tgl. Expired</Label>
+                        <Input type="date" value={newTangki.tgl_expired} onChange={(e) => setNewTangki({ ...newTangki, tgl_expired: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>No. Segel BC</Label>
+                        <Input value={newTangki.no_segel_bc} onChange={(e) => setNewTangki({ ...newTangki, no_segel_bc: e.target.value })} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>No. Segel Perusahaan</Label>
+                        <Input value={newTangki.no_segel_perusahaan} onChange={(e) => setNewTangki({ ...newTangki, no_segel_perusahaan: e.target.value })} />
+                      </div>
+
+                      <div className="col-span-full space-y-2">
+                        <Label>Keterangan</Label>
+                        <Input value={newTangki.keterangan} onChange={(e) => setNewTangki({ ...newTangki, keterangan: e.target.value })} placeholder="Keterangan tambahan" />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+                      <Button variant="outline" onClick={() => setIsAddOpen(false)}>Batal</Button>
+                      <Button onClick={async () => {
+                        // basic client-side validation
+                        if (!newTangki.kd_dok_inout || !newTangki.no_tangki || !newTangki.jenis_isi) {
+                          alert('Kode Dok IN/OUT, Nomor tangki dan Jenis isi wajib diisi');
+                          return;
+                        }
+                        setIsAdding(true)
+                        router.post(`/documents/${document.id}/tangki`, {
+                          tangki: [newTangki]
+                        }, {
+                          onSuccess: () => {
+                            setIsAdding(false)
+                            setIsAddOpen(false)
+                            router.reload({ only: ['document'] })
+                          },
+                          onError: (errors) => {
+                            setIsAdding(false)
+                            console.error('Add tangki error', errors)
+                            alert('Gagal menambah tangki. Periksa input dan coba lagi.')
+                          }
+                        })
+                      }}>
+                        {isAdding ? 'Menambahkan...' : 'Tambah Tangki'}
                       </Button>
-                    ) : (
-                      <>
-                        <Button
-                          onClick={handleResendToHost}
-                          disabled={isResending}
-                          variant="outline"
-                          className="border-orange-500 text-orange-600 hover:bg-orange-50"
-                        >
-                          <Upload className="w-4 h-4 mr-2" />
-                          {isResending ? 'Mengirim Ulang...' : 'Resend to Host'}
-                        </Button>
-                        <Button
-                          onClick={fetchTransmissionHistory}
-                          variant="outline"
-                          size="sm"
-                        >
-                          History ({transmissionHistory.length || '?'})
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                )}
-                
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </>
             )}
+
+            {(auth.user.roles?.some((role) => role.name === 'admin') ||
+              auth.user.roles?.some((role) =>
+                role.permissions?.some((perm) => perm.name === 'export.json')
+              )
+            ) && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
+                  >
+                    <FileJson className="w-4 h-4 mr-2" />
+                    Preview JSON
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(`/api/export/documents/${document.id}/download/json`, '_blank')}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download JSON
+                  </Button>
+
+                  {/* Send to Host with Format Selection */}
+                  {document.status === 'approved' && (
+                    <div className="flex items-center gap-2 ml-2 pl-2 border-l">
+                      <Select value={transmissionFormat} onValueChange={(value: 'xml' | 'json') => setTransmissionFormat(value)}>
+                        <SelectTrigger className="w-[110px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="xml">Format XML</SelectItem>
+                          <SelectItem value="json">Format JSON</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {/* @ts-ignore - sent_to_host may not be in type */}
+                      {!document.sent_to_host ? (
+                        <Button
+                          onClick={handleSendToHost}
+                          disabled={isSending}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          {isSending ? 'Mengirim...' : 'Send to Host'}
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            onClick={handleResendToHost}
+                            disabled={isResending}
+                            variant="outline"
+                            className="border-orange-500 text-orange-600 hover:bg-orange-50"
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            {isResending ? 'Mengirim Ulang...' : 'Resend to Host'}
+                          </Button>
+                          <Button
+                            onClick={fetchTransmissionHistory}
+                            variant="outline"
+                            size="sm"
+                          >
+                            History ({transmissionHistory.length || '?'})
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                </>
+              )}
           </div>
         </div>
 
@@ -321,8 +699,8 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
               <CardTitle className="text-blue-900 dark:text-blue-100">
                 Riwayat Pengiriman ke Host ({transmissionHistory.length}x)
               </CardTitle>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 onClick={() => setShowHistory(false)}
               >
@@ -332,12 +710,12 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
             <CardContent>
               <div className="space-y-3">
                 {transmissionHistory.map((log, index) => (
-                  <div 
-                    key={log.id} 
+                  <div
+                    key={log.id}
                     className="flex items-start gap-4 p-3 bg-white dark:bg-slate-800 rounded-lg border"
                   >
                     <div className="flex-shrink-0">
-                      <Badge 
+                      <Badge
                         variant={log.status === 'success' ? 'success' : log.status === 'failed' ? 'destructive' : 'secondary'}
                         className="min-w-[80px] justify-center"
                       >

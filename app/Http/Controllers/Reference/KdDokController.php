@@ -73,7 +73,7 @@ class KdDokController extends Controller
 
         KdDok::create($validated);
 
-        return redirect()->route('reference.kd-dok.index')
+        return redirect()->route('kd-dok.index')
             ->with('success', 'Kode dokumen berhasil ditambahkan');
     }
 
@@ -113,7 +113,7 @@ class KdDokController extends Controller
 
         $kdDok->update($validated);
 
-        return redirect()->route('reference.kd-dok.index')
+        return redirect()->route('kd-dok.index')
             ->with('success', 'Kode dokumen berhasil diperbarui');
     }
 

@@ -30,6 +30,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('documents', \App\Http\Controllers\DocumentController::class)->except(['destroy']);
     Route::delete('/documents/{document}', [\App\Http\Controllers\DocumentController::class, 'destroy'])->name('documents.destroy');
     Route::post('/documents/{document}/submit', [\App\Http\Controllers\DocumentController::class, 'submit'])->name('documents.submit');
+    // Append tangki to an existing document (used by modal on document show page)
+    Route::post('/documents/{document}/tangki', [\App\Http\Controllers\DocumentController::class, 'appendTangki'])->name('documents.append-tangki');
+    
+    // Import Excel Routes
+    Route::post('/documents/parse-tangki-excel', [\App\Http\Controllers\DocumentController::class, 'parseTangkiExcel'])->name('documents.parse-tangki-excel');
+    Route::post('/documents/{document}/import-tangki', [\App\Http\Controllers\DocumentController::class, 'importTangki'])->name('documents.import-tangki');
 
     // Export Routes - Preview and Download XML/JSON
     Route::prefix('api/export')->name('export.')->group(function () {
@@ -174,30 +180,14 @@ Route::middleware('auth')->group(function () {
         // Kode Sarana Angkut In/Out
         Route::resource('kd-sar-angkut-inout', \App\Http\Controllers\Reference\KdSarAngkutInoutController::class);
 
-        // Nama Angkutan (Keep existing route for now)
-        Route::get('/nm-angkut', function () {
-            $nmAngkut = \App\Models\NmAngkut::latest()->paginate(15);
+        // Nama Angkutan - resourceful controller (index, create, store, show, edit, update, destroy)
+        Route::resource('nm-angkut', \App\Http\Controllers\Reference\NmAngkutController::class);
 
-            return Inertia::render('Reference/NmAngkut/Index', [
-                'nmAngkut' => [
-                    'data' => $nmAngkut->items(),
-                    'meta' => [
-                        'current_page' => $nmAngkut->currentPage(),
-                        'from' => $nmAngkut->firstItem(),
-                        'last_page' => $nmAngkut->lastPage(),
-                        'per_page' => $nmAngkut->perPage(),
-                        'to' => $nmAngkut->lastItem(),
-                        'total' => $nmAngkut->total(),
-                    ],
-                    'links' => [
-                        'first' => $nmAngkut->url(1),
-                        'last' => $nmAngkut->url($nmAngkut->lastPage()),
-                        'prev' => $nmAngkut->previousPageUrl(),
-                        'next' => $nmAngkut->nextPageUrl(),
-                    ],
-                ],
-            ]);
-        })->name('reference.nm-angkut.index');
+        // Referensi Jenis Satuan
+        Route::resource('jenis-satuan', \App\Http\Controllers\Reference\ReferensiJenisSatuanController::class);
+
+        // Referensi Jenis Kemasan
+        Route::resource('jenis-kemasan', \App\Http\Controllers\Reference\ReferensiJenisKemasanController::class);
     });
 
     // Settings Routes

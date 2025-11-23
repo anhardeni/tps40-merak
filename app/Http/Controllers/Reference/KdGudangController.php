@@ -87,7 +87,7 @@ class KdGudangController extends Controller
 
         KdGudang::create($validated);
 
-        return redirect()->route('reference.kd-gudang.index')
+        return redirect()->route('kd-gudang.index')
             ->with('success', 'Kode gudang berhasil ditambahkan');
     }
 
@@ -134,7 +134,7 @@ class KdGudangController extends Controller
 
         $kdGudang->update($validated);
 
-        return redirect()->route('reference.kd-gudang.index')
+        return redirect()->route('kd-gudang.index')
             ->with('success', 'Kode gudang berhasil diperbarui');
     }
 

@@ -63,6 +63,16 @@ const referenceNavItems: NavItem[] = [
         href: '/reference/kd-sar-angkut-inout',
         icon: Database,
     },
+    {
+        title: 'Jenis Satuan',
+        href: '/reference/jenis-satuan',
+        icon: Database,
+    },
+    {
+        title: 'Jenis Kemasan',
+        href: '/reference/jenis-kemasan',
+        icon: Database,
+    },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -106,23 +116,23 @@ const footerNavItems: NavItem[] = [
 
 export function AppSidebar() {
     const { auth } = usePage<SharedData>().props;
-    
+
     // Check if user is admin
     const isAdmin = auth.user?.roles?.some((role) => role.name === 'admin') || false;
-    
+
     // Check permissions with admin bypass
     const hasPermission = (permissionName: string) => {
         // ADMIN BYPASS: Admin always has access
         if (isAdmin) {
             return true;
         }
-        
+
         // For other roles, check permissions
-        return auth.user?.roles?.some((role) => 
+        return auth.user?.roles?.some((role) =>
             role.permissions?.some((perm) => perm.name === permissionName)
         ) || false;
     };
-    
+
     const canAccessReference = hasPermission('manage.references');
     const canAccessAdmin = hasPermission('manage.users');
 
@@ -149,10 +159,10 @@ export function AppSidebar() {
                 </div>
             </SidebarHeader>
 
-                        <SidebarContent className="gap-0">
+            <SidebarContent className="gap-0">
                 <NavMain items={mainNavItems} label="Main Menu" />
                 <SidebarSeparator className="mx-0" />
-                
+
                 {canAccessReference && (
                     <>
                         <NavMain items={referenceNavItems} label="Reference Data" />

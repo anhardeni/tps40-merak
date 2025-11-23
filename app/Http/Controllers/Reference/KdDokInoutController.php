@@ -81,7 +81,7 @@ class KdDokInoutController extends Controller
 
         KdDokInout::create($validated);
 
-        return redirect()->route('reference.kd-dok-inout.index')
+        return redirect()->route('kd-dok-inout.index')
             ->with('success', 'Kode dokumen in/out berhasil ditambahkan');
     }
 
@@ -124,7 +124,7 @@ class KdDokInoutController extends Controller
 
         $kdDokInout->update($validated);
 
-        return redirect()->route('reference.kd-dok-inout.index')
+        return redirect()->route('kd-dok-inout.index')
             ->with('success', 'Kode dokumen in/out berhasil diperbarui');
     }
 
@@ -133,7 +133,7 @@ class KdDokInoutController extends Controller
         try {
             $kdDokInout->delete();
 
-            return redirect()->route('reference.kd-dok-inout.index')
+            return redirect()->route('kd-dok-inout.index')
                 ->with('success', 'Kode dokumen in/out berhasil dihapus');
         } catch (\Exception $e) {
             return back()->withErrors([

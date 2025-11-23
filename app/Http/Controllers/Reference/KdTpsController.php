@@ -58,7 +58,7 @@ class KdTpsController extends Controller
 
         KdTps::create($validated);
 
-        return redirect()->route('reference.kd-tps.index')
+        return redirect()->route('kd-tps.index')
             ->with('success', 'Kode TPS berhasil ditambahkan');
     }
 
@@ -92,7 +92,7 @@ class KdTpsController extends Controller
 
         $kdTps->update($validated);
 
-        return redirect()->route('reference.kd-tps.index')
+        return redirect()->route('kd-tps.index')
             ->with('success', 'Kode TPS berhasil diperbarui');
     }
 
@@ -101,7 +101,7 @@ class KdTpsController extends Controller
         try {
             $kdTps->delete();
 
-            return redirect()->route('reference.kd-tps.index')
+            return redirect()->route('kd-tps.index')
                 ->with('success', 'Kode TPS berhasil dihapus');
         } catch (\Exception $e) {
             return back()->withErrors([

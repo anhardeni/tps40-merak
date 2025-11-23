@@ -86,6 +86,16 @@ class Tangki extends Model
         return $this->belongsTo(KdDokInout::class, 'kd_dok_inout', 'kd_dok_inout');
     }
 
+    public function referenceJenisSatuan(): BelongsTo
+    {
+        return $this->belongsTo(ReferensiJenisSatuan::class, 'jns_satuan', 'kode_satuan_barang');
+    }
+
+    public function referenceJenisKemasan(): BelongsTo
+    {
+        return $this->belongsTo(ReferensiJenisKemasan::class, 'jenis_kemasan', 'kode_jenis_kemasan');
+    }
+
     public function tangkiReferences(): HasMany
     {
         return $this->hasMany(TangkiReference::class);

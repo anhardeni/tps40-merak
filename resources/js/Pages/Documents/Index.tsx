@@ -236,7 +236,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                               <td className="p-4">
                                 <Badge variant="outline">{document.kd_tps}</Badge>
                               </td>
-                              <td className="p-4 max-w-32 truncate">
+                              <td className="p-4">
                                 {document.nm_angkut?.nm_angkut || '-'}
                               </td>
                               <td className="p-4">{document.no_voy_flight || '-'}</td>
