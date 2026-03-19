@@ -98,6 +98,12 @@ class UserController extends Controller
             'is_active' => ['boolean'],
         ]);
 
+        $requestedRoles = Role::whereIn('id', $validated['roles'])->pluck('name')->toArray();
+        $adminRoles = array_intersect(['super-admin', 'admin'], $requestedRoles);
+        if (!empty($adminRoles) && !auth()->user()->hasRole(['super-admin', 'admin'])) {
+            return back()->with('error', 'Cannot assign Admin roles without Admin access.');
+        }
+
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -161,6 +167,12 @@ class UserController extends Controller
             'roles.*' => ['exists:roles,id'],
             'is_active' => ['boolean'],
         ]);
+
+        $requestedRoles = Role::whereIn('id', $validated['roles'])->pluck('name')->toArray();
+        $adminRoles = array_intersect(['super-admin', 'admin'], $requestedRoles);
+        if (!empty($adminRoles) && !auth()->user()->hasRole(['super-admin', 'admin'])) {
+            return back()->with('error', 'Cannot assign Admin roles without Admin access.');
+        }
 
         $user->update([
             'name' => $validated['name'],
@@ -236,6 +248,12 @@ class UserController extends Controller
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['exists:roles,id'],
         ]);
+
+        $requestedRoles = Role::whereIn('id', $validated['roles'])->pluck('name')->toArray();
+        $adminRoles = array_intersect(['super-admin', 'admin'], $requestedRoles);
+        if (!empty($adminRoles) && !auth()->user()->hasRole(['super-admin', 'admin'])) {
+            return back()->with('error', 'Cannot assign Admin roles without Admin access.');
+        }
 
         $user->roles()->sync($validated['roles']);
 

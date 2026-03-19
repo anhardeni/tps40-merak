@@ -99,6 +99,10 @@ class RoleController extends Controller
      */
     public function update(UpdateRoleRequest $request, Role $role): RedirectResponse
     {
+        if (in_array($role->name, ['admin', 'super-admin']) && !auth()->user()->hasRole(['admin', 'super-admin'])) {
+            return back()->with('error', 'Cannot modify Admin roles without Admin access.');
+        }
+
         $role->update([
             'name' => $request->name,
             'display_name' => $request->display_name,
@@ -116,8 +120,8 @@ class RoleController extends Controller
     public function destroy(Role $role): RedirectResponse
     {
         // Prevent deleting admin role
-        if ($role->name === 'admin') {
-            return back()->with('error', 'Cannot delete admin role.');
+        if (in_array($role->name, ['admin', 'super-admin'])) {
+            return back()->with('error', 'Cannot delete admin or super-admin role.');
         }
 
         // Check if role has users

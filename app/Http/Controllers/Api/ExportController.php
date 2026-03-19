@@ -273,6 +273,7 @@ class ExportController extends Controller
             $document->update([
                 'sent_to_host' => true,
                 'sent_at' => now(),
+                'needs_resend' => false, // Clear resend flag after successful transmission
                 'host_response' => [
                     'transmission_format' => $result['format'],
                     'transmission_size' => $result['transmission_size'] ?? null,
@@ -392,6 +393,7 @@ class ExportController extends Controller
             $document->update([
                 'sent_to_host' => true,
                 'sent_at' => now(),
+                'needs_resend' => false, // Clear resend flag after successful transmission
                 'host_response' => [
                     'transmission_format' => $result['format'],
                     'transmission_size' => $result['transmission_size'] ?? null,

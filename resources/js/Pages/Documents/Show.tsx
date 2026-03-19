@@ -21,7 +21,8 @@ import {
   Eye,
   FileJson,
   Upload,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Plus
 } from "lucide-react"
 
 interface Document {
@@ -296,11 +297,15 @@ export default function ShowDocument({ auth, document, kdDokInout, jenisSatuan, 
             </div>
           </div>
 
-          <div className="flex gap-2">
+          {/* Action Buttons - Redesigned with better visual hierarchy */}
+          <div className="flex flex-wrap gap-3">
+            {/* Primary Actions Group */}
             {document.status === 'draft' && (
-              <>
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
+                  size="default"
+                  className="border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
                   onClick={() => router.get(`/documents/${document.id}/edit`)}
                 >
                   <Edit className="w-4 h-4 mr-2" />
@@ -308,38 +313,49 @@ export default function ShowDocument({ auth, document, kdDokInout, jenisSatuan, 
                 </Button>
 
                 <Button
+                  size="default"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg transition-all duration-200"
                   onClick={handleSubmit}
                 >
                   <Send className="w-4 h-4 mr-2" />
-                  Submit
+                  Submit untuk Approval
                 </Button>
-              </>
+              </div>
             )}
 
-            <Button
-              variant="outline"
-              onClick={() => window.open(`/api/export/documents/${document.id}/preview/xml`, '_blank')}
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              Preview XML
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => window.open(`/api/export/documents/${document.id}/download/xml`, '_blank')}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download XML
-            </Button>
+            {/* Export Actions Group */}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="default"
+                className="border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200"
+                onClick={() => window.open(`/api/export/documents/${document.id}/preview/xml`, '_blank')}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Preview XML
+              </Button>
+              <Button
+                variant="outline"
+                size="default"
+                className="border-green-200 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
+                onClick={() => window.open(`/api/export/documents/${document.id}/download/xml`, '_blank')}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download XML
+              </Button>
+            </div>
 
-            {/* Add Tangki modal trigger - available for Draft or Submitted documents */}
-            {(document.status === 'draft' || document.status === 'submitted') && (
-              <>
+            {/* Data Management Group - available for Draft, Submitted, or Approved documents */}
+            {(document.status === 'draft' || document.status === 'submitted' || document.status === 'approved') && (
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
+                  size="default"
+                  className="border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-all duration-200 group"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  Import Excel
+                  <FileSpreadsheet className="w-4 h-4 mr-2 group-hover:text-purple-600 transition-colors" />
+                  <span className="font-medium">Import Excel</span>
                 </Button>
                 <input
                   type="file"
@@ -350,7 +366,14 @@ export default function ShowDocument({ auth, document, kdDokInout, jenisSatuan, 
                 />
                 <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline">Tambah Tangki</Button>
+                    <Button
+                      variant="default"
+                      size="default"
+                      className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-md hover:shadow-lg transition-all duration-200"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      <span className="font-medium">Tambah Tangki</span>
+                    </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogTitle>Tambah Tangki</DialogTitle>
@@ -616,7 +639,7 @@ export default function ShowDocument({ auth, document, kdDokInout, jenisSatuan, 
                     </div>
                   </DialogContent>
                 </Dialog>
-              </>
+              </div>
             )}
 
             {(auth.user.roles?.some((role) => role.name === 'admin') ||

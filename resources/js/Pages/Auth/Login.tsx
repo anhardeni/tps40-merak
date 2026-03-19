@@ -6,6 +6,7 @@ import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
+import ColorBends from '@/Components/ColorBend';
 
 export default function Login({
     status,
@@ -31,6 +32,23 @@ export default function Login({
     return (
         <GuestLayout>
             <Head title="Log in" />
+
+            {/* Animated Background */}
+            <div className="fixed inset-0 -z-10" style={{ width: '100vw', height: '100vh' }}>
+                <ColorBends
+                    colors={['#6366f1', '#475569', '#64748b', '#3b82f6']}
+                    speed={0.5}
+                    autoRotate={0}
+                    scale={1}
+                    frequency={1}
+                    warpStrength={0.5}
+                    transparent={false}
+                    mouseInfluence={0}
+                    parallax={0}
+                    noise={0}
+                    className=""
+                />
+            </div>
 
             {status && (
                 <div className="mb-4 text-sm font-medium text-green-600">

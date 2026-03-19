@@ -48,13 +48,19 @@ class DocumentController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Date filter
-        if ($request->date_from) {
-            $query->whereDate('tgl_entry', '>=', $request->date_from);
-        }
-        if ($request->date_to) {
-            $query->whereDate('tgl_entry', '<=', $request->date_to);
-        }
+        // Date filter (by created_at) - default to last 6 months if not specified
+        $dateFrom = $request->date_from ?? now()->subMonths(6)->format('Y-m-d');
+        $dateTo = $request->date_to ?? now()->format('Y-m-d');
+        
+        $query->whereDate('created_at', '>=', $dateFrom)
+              ->whereDate('created_at', '<=', $dateTo);
+
+        // Tgl Tiba filter - default to last 90 days if not specified
+        $tglTibaFrom = $request->tgl_tiba_from ?? now()->subDays(90)->format('Y-m-d');
+        $tglTibaTo = $request->tgl_tiba_to ?? now()->format('Y-m-d');
+        
+        $query->whereDate('tgl_tiba', '>=', $tglTibaFrom)
+              ->whereDate('tgl_tiba', '<=', $tglTibaTo);
 
         $documents = $query->orderBy('created_at', 'desc')
             ->paginate(15)
@@ -78,7 +84,12 @@ class DocumentController extends Controller
                     'next' => $documents->nextPageUrl(),
                 ],
             ],
-            'filters' => $request->only(['search', 'status', 'date_from', 'date_to']),
+            'filters' => array_merge($request->only(['search', 'status']), [
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'tgl_tiba_from' => $tglTibaFrom,
+                'tgl_tiba_to' => $tglTibaTo,
+            ]),
         ]);
     }
 
@@ -494,30 +505,46 @@ class DocumentController extends Controller
                 ],
             ]);
 
-            // update status to AMENDED so approver knows to re-check
-            $document->update(['status' => 'AMENDED']);
+            // Handle status update based on current status
+            $statusUpdate = [];
+            $successMessage = 'Tangki berhasil ditambahkan.';
 
-            // notify approvers (users with role 'approver' or permission 'documents.approve' and admins)
-            $approvers = \App\Models\User::whereHas('roles', function ($q) {
-                $q->where('name', 'approver');
-            })->get();
+            if ($document->status === 'APPROVED' && $document->sent_to_host) {
+                // APPROVED + already sent: set needs_resend flag
+                $statusUpdate['needs_resend'] = true;
+                $successMessage = 'Tangki berhasil ditambahkan. Silakan klik "Resend to Host" untuk mengirim ulang data terbaru.';
+            } elseif ($document->status === 'SUBMITTED' || $document->status === 'AMENDED') {
+                // SUBMITTED/AMENDED: change to AMENDED
+                $statusUpdate['status'] = 'AMENDED';
+                $successMessage = 'Tangki berhasil ditambahkan dan dokumen diberi status AMENDED.';
 
-            $withPerm = \App\Models\User::whereHas('roles.permissions', function ($q) {
-                $q->where('name', 'documents.approve');
-            })->get();
+                // notify approvers
+                $approvers = \App\Models\User::whereHas('roles', function ($q) {
+                    $q->where('name', 'approver');
+                })->get();
 
-            $admins = \App\Models\User::whereHas('roles', function ($q) {
-                $q->where('name', 'admin');
-            })->get();
+                $withPerm = \App\Models\User::whereHas('roles.permissions', function ($q) {
+                    $q->where('name', 'documents.approve');
+                })->get();
 
-            $notify = $approvers->merge($withPerm)->merge($admins)->unique('id');
+                $admins = \App\Models\User::whereHas('roles', function ($q) {
+                    $q->where('name', 'admin');
+                })->get();
 
-            if ($notify->isNotEmpty()) {
-                \Illuminate\Support\Facades\Notification::send($notify, new \App\Notifications\DocumentAmended($document, $user));
+                $notify = $approvers->merge($withPerm)->merge($admins)->unique('id');
+
+                if ($notify->isNotEmpty()) {
+                    \Illuminate\Support\Facades\Notification::send($notify, new \App\Notifications\DocumentAmended($document, $user));
+                }
+            }
+            // DRAFT stays as DRAFT
+
+            if (!empty($statusUpdate)) {
+                $document->update($statusUpdate);
             }
 
             return redirect()->route('documents.show', $document)
-                ->with('success', 'Tangki berhasil ditambahkan dan dokumen diberi status AMENDED.');
+                ->with('success', $successMessage);
 
         } catch (\Exception $e) {
             DB::rollback();
@@ -672,8 +699,27 @@ class DocumentController extends Controller
             }
 
             DB::commit();
+            
+            // Handle status update based on current status (same logic as appendTangki)
+            $statusUpdate = [];
+            $successMessage = "Berhasil mengimport $count tangki.";
+            
+            if ($document->status === 'APPROVED' && $document->sent_to_host) {
+                // APPROVED + already sent: set needs_resend flag
+                $statusUpdate['needs_resend'] = true;
+                $successMessage = "Berhasil mengimport $count tangki. Silakan klik \"Resend to Host\" untuk mengirim ulang data terbaru.";
+            } elseif ($document->status === 'SUBMITTED' || $document->status === 'AMENDED') {
+                // SUBMITTED/AMENDED: change to AMENDED
+                $statusUpdate['status'] = 'AMENDED';
+                $successMessage = "Berhasil mengimport $count tangki dan dokumen diberi status AMENDED.";
+            }
+            // DRAFT stays as DRAFT
+            
+            if (!empty($statusUpdate)) {
+                $document->update($statusUpdate);
+            }
 
-            return back()->with('success', "Berhasil mengimport $count tangki.");
+            return back()->with('success', $successMessage);
 
         } catch (\Exception $e) {
             DB::rollback();

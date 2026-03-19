@@ -14,6 +14,10 @@ class RolePermissionController extends Controller
      */
     public function sync(Request $request, Role $role): RedirectResponse
     {
+        if (in_array($role->name, ['admin', 'super-admin']) && !auth()->user()->hasRole(['admin', 'super-admin'])) {
+            return back()->with('error', 'Cannot modify Admin role permissions without Admin access.');
+        }
+
         $request->validate([
             'permissions' => 'required|array',
             'permissions.*' => 'exists:permissions,id',

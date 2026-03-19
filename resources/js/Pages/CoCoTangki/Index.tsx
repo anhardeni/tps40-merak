@@ -49,6 +49,7 @@ interface Document {
   nm_angkut?: {
     nm_angkut: string
   }
+  no_voy_flight?: string
   status: string
   tangki_count: number
   cocotangki_status?: string
@@ -103,10 +104,10 @@ export default function CoCoTangkiIndex({ documents, stats, filters }: Props) {
   const [selectedDocuments, setSelectedDocuments] = useState<number[]>([])
 
   const handleSearch = () => {
-    router.get('/cocotangki', { 
-      search, 
-      status, 
-      cocotangki_status: cocotangkiStatus 
+    router.get('/cocotangki', {
+      search,
+      status,
+      cocotangki_status: cocotangkiStatus
     })
   }
 
@@ -270,7 +271,7 @@ export default function CoCoTangkiIndex({ documents, stats, filters }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Select value={cocotangkiStatus} onValueChange={setCoCoTangkiStatus}>
                   <SelectTrigger>
@@ -319,6 +320,7 @@ export default function CoCoTangkiIndex({ documents, stats, filters }: Props) {
                   </TableHead>
                   <TableHead>Dokumen</TableHead>
                   <TableHead>Angkutan</TableHead>
+                  <TableHead>No. Voy/Flight</TableHead>
                   <TableHead>Tangki</TableHead>
                   <TableHead>Status Dokumen</TableHead>
                   <TableHead>Status CoCoTangki</TableHead>
@@ -351,17 +353,22 @@ export default function CoCoTangkiIndex({ documents, stats, filters }: Props) {
                       </div>
                     </TableCell>
                     <TableCell>
+                      <div className="text-sm text-slate-600">
+                        {document.no_voy_flight || '-'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <Badge variant="outline">
                         {document.tangki_count} tangki
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge 
+                      <Badge
                         variant={document.status === 'APPROVED' ? 'default' : 'secondary'}
                         className={
                           document.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                          document.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
+                            document.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
                         }
                       >
                         {document.status}
@@ -377,7 +384,7 @@ export default function CoCoTangkiIndex({ documents, stats, filters }: Props) {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        {document.cocotangki_sent_at 
+                        {document.cocotangki_sent_at
                           ? new Date(document.cocotangki_sent_at).toLocaleString('id-ID')
                           : '-'
                         }
@@ -392,28 +399,28 @@ export default function CoCoTangkiIndex({ documents, stats, filters }: Props) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                          
-                          <DropdownMenuItem onClick={() => router.get(`/cocotangki/${document.id}`)}>
+
+                          <DropdownMenuItem onSelect={() => router.get(`/documents/${document.id}`)}>
                             <Eye className="mr-2 h-4 w-4" />
                             Lihat Detail
                           </DropdownMenuItem>
-                          
-                          <DropdownMenuItem onClick={() => router.get(`/cocotangki/${document.id}/download`)}>
+
+                          <DropdownMenuItem onSelect={() => router.get(`/cocotangki/${document.id}/download`)}>
                             <Download className="mr-2 h-4 w-4" />
                             Download XML
                           </DropdownMenuItem>
-                          
+
                           <DropdownMenuSeparator />
-                          
+
                           {(!document.cocotangki_status || document.cocotangki_status === 'error') && (
-                            <DropdownMenuItem onClick={() => handleSendDocument(document.id)}>
+                            <DropdownMenuItem onSelect={() => handleSendDocument(document.id)}>
                               <Send className="mr-2 h-4 w-4" />
                               {document.cocotangki_status === 'error' ? 'Kirim Ulang' : 'Kirim'}
                             </DropdownMenuItem>
                           )}
-                          
+
                           {document.cocotangki_status === 'error' && (
-                            <DropdownMenuItem onClick={() => handleRetry(document.id)}>
+                            <DropdownMenuItem onSelect={() => handleRetry(document.id)}>
                               <RefreshCw className="mr-2 h-4 w-4" />
                               Retry
                             </DropdownMenuItem>
