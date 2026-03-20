@@ -73,21 +73,17 @@ export default function Edit({ credential }: Props) {
                 {/* Service Name */}
                 <div className="space-y-2">
                   <Label htmlFor="service_name">
-                    Service Name <span className="text-red-500">*</span>
+                    Service Identifier (Name) <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="service_name"
                     value={data.service_name}
-                    onChange={(e) => setData('service_name', e.target.value)}
-                    placeholder="cocotangki, sppb, etc"
-                    className={errors.service_name ? 'border-red-500' : ''}
+                    disabled={true}
+                    className="bg-slate-100 text-slate-500 dark:bg-slate-900 cursor-not-allowed"
                   />
-                  {errors.service_name && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{errors.service_name}</AlertDescription>
-                    </Alert>
-                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    System Identifier tidak dapat diubah setelah dibuat karena terhubung langsung dengan core code Sistem (contoh: digunakan oleh CoCoTangkiService).
+                  </p>
                 </div>
 
                 {/* Service Type */}

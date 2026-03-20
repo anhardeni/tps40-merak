@@ -8,8 +8,12 @@ import { Label } from "@/Components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card"
 import { Select } from "@/Components/ui/select"
 import { Textarea } from "@/Components/ui/textarea"
-import { Plus, Trash2, Save, Download, Send, FileSpreadsheet } from "lucide-react"
+import { Plus, Trash2, Save, Download, FileSpreadsheet, ArrowDownCircle, ArrowUpCircle, LayoutGrid, FileText, Package, Clock, CheckCircle2, ChevronRight, ChevronLeft, AlertCircle } from "lucide-react"
 import { router } from '@inertiajs/react'
+
+// Constants for Document Mapping
+const DOK_IN_CODES = ['1', '3', '5', '6']
+const DOK_OUT_CODES = ['2', '4', '7', '8', '9']
 
 // Validation schema
 const documentSchema = z.object({
@@ -87,6 +91,17 @@ interface DocumentFormProps {
 
 export function DocumentForm({ document, referenceData, onSubmit, isLoading = false }: DocumentFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Logic to determine initial mode
+  const getInitialMode = () => {
+    if (!document?.kd_dok) return 'IN' // Default to IN for new documents
+    if (DOK_IN_CODES.includes(document.kd_dok)) return 'IN'
+    if (DOK_OUT_CODES.includes(document.kd_dok)) return 'OUT'
+    return 'ALL'
+  }
+
+  const [entryMode, setEntryMode] = useState<'ALL' | 'IN' | 'OUT'>(getInitialMode())
+  const [activeTab, setActiveTab] = useState<'header' | 'tangki' | 'gate'>('header')
 
   const {
     register,
@@ -152,8 +167,13 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
           pel_bongkar: '',
         }
       ]
-    }
+    },
   })
+
+  // Error indicators for tabs (Must be defined after useForm)
+  const hasHeaderError = !!(errors.kd_dok || errors.kd_tps || errors.nm_angkut_id || errors.kd_gudang || errors.tgl_entry || errors.jam_entry)
+  const hasTangkiError = !!errors.tangki
+  const hasGateError = !!(errors.tgl_gate_in || errors.jam_gate_in || errors.tgl_gate_out || errors.jam_gate_out || errors.tgl_tiba)
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -174,7 +194,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
         method: 'POST',
         body: formData,
         headers: {
-          'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+          'X-CSRF-TOKEN': (window.document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
         },
       })
 
@@ -253,7 +273,32 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
     return g.kd_tps === selectedKdTps
   })
 
-  // if the currently selected gudang is not present in filtered options, clear it
+  // filtered document codes based on entry mode
+  const filteredKdDok = referenceData.kdDok.filter((d) => {
+    if (entryMode === 'ALL') return true
+    if (entryMode === 'IN') return DOK_IN_CODES.includes(d.kd_dok)
+    if (entryMode === 'OUT') return DOK_OUT_CODES.includes(d.kd_dok)
+    return true
+  })
+
+  // filtered kd_dok_inout based on entry mode for tangki detail
+  const filteredKdDokInout = referenceData.kdDokInout?.filter((d) => {
+    if (entryMode === 'ALL') return true
+    return d.jenis === entryMode
+  })
+
+  // if the currently selected document code is not in the filtered list when switching modes, clear it
+  useEffect(() => {
+    const currentKdDok = watch('kd_dok')
+    if (currentKdDok && entryMode !== 'ALL') {
+      const isValid = filteredKdDok.some(d => d.kd_dok === currentKdDok)
+      if (!isValid) {
+        setValue('kd_dok', '')
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryMode])
+
   useEffect(() => {
     if (!selectedKdGudang) return
     const stillValid = filteredKdGudang.some((g) => g.kd_gudang === selectedKdGudang)
@@ -343,12 +388,115 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
       </div>
 
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-        {/* Header Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Informasi Header</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Mode Selector */}
+        <div className="grid grid-cols-3 gap-4 mb-2">
+          <button
+            type="button"
+            onClick={() => setEntryMode('IN')}
+            className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+              entryMode === 'IN' 
+                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' 
+                : 'border-slate-200 bg-white hover:border-blue-200 dark:border-slate-800 dark:bg-slate-950'
+            }`}
+          >
+            <ArrowDownCircle className={`w-8 h-8 mb-2 ${entryMode === 'IN' ? 'text-blue-500' : 'text-slate-400'}`} />
+            <span className="font-bold">MASUK (GATE IN)</span>
+            <span className="text-xs opacity-60">Impor / Penimbunan</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setEntryMode('OUT')}
+            className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+              entryMode === 'OUT' 
+                ? 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400' 
+                : 'border-slate-200 bg-white hover:border-orange-200 dark:border-slate-800 dark:bg-slate-950'
+            }`}
+          >
+            <ArrowUpCircle className={`w-8 h-8 mb-2 ${entryMode === 'OUT' ? 'text-orange-500' : 'text-slate-400'}`} />
+            <span className="font-bold">KELUAR (GATE OUT)</span>
+            <span className="text-xs opacity-60">Ekspor / Pengiriman</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setEntryMode('ALL')}
+            className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+              entryMode === 'ALL' 
+                ? 'border-slate-500 bg-slate-50 text-slate-700 dark:bg-slate-900/20 dark:text-slate-400' 
+                : 'border-slate-200 bg-white hover:border-slate-200 dark:border-slate-800 dark:bg-slate-950'
+            }`}
+          >
+            <LayoutGrid className={`w-8 h-8 mb-2 ${entryMode === 'ALL' ? 'text-slate-500' : 'text-slate-400'}`} />
+            <span className="font-bold">TAMPILKAN SEMUA</span>
+            <span className="text-xs opacity-60">Mode Manual / Custom</span>
+          </button>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6 bg-white dark:bg-slate-950 sticky top-0 z-10 py-1 gap-1 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab('header')}
+            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 ${
+              activeTab === 'header' 
+                ? 'border-blue-500 text-blue-600 bg-blue-50/50 dark:bg-blue-900/10' 
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <div className="relative">
+              <FileText className="w-4 h-4" />
+              {hasHeaderError && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+            </div>
+            <span className="whitespace-nowrap">Header</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('tangki')}
+            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 ${
+              activeTab === 'tangki' 
+                ? 'border-blue-500 text-blue-600 bg-blue-50/50 dark:bg-blue-900/10' 
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <div className="relative">
+              <Package className="w-4 h-4" />
+              {hasTangkiError && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+            </div>
+            <span className="whitespace-nowrap">Tangki</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 ml-1">
+              {fields.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('gate')}
+            className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 ${
+              activeTab === 'gate' 
+                ? 'border-blue-500 text-blue-600 bg-blue-50/50 dark:bg-blue-900/10' 
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <div className="relative">
+              <Clock className="w-4 h-4" />
+              {hasGateError && <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+            </div>
+            <span className="whitespace-nowrap">Waktu & Gate</span>
+          </button>
+        </div>
+        {/* Tab 1: Header */}
+        {activeTab === 'header' && (
+          <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-blue-500" />
+                Informasi Utama
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="kd_dok">Kode Dokumen *</Label>
               <select
@@ -356,7 +504,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                 className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
               >
                 <option value="">Pilih Kode Dokumen</option>
-                {referenceData.kdDok.map((item) => (
+                {filteredKdDok.map((item) => (
                   <option key={item.kd_dok} value={item.kd_dok}>
                     {item.kd_dok} - {item.nm_dok}
                   </option>
@@ -438,85 +586,60 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
               {errors.tgl_entry && (
                 <p className="text-sm text-red-500">{errors.tgl_entry.message}</p>
               )}
-            </div>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="jam_entry">Jam Entry *</Label>
-              <Input
-                type="time"
-                {...register('jam_entry')}
-              />
-              {errors.jam_entry && (
-                <p className="text-sm text-red-500">{errors.jam_entry.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tgl_tiba">Tanggal Tiba</Label>
-              <Input
-                type="date"
-                {...register('tgl_tiba')}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tgl_gate_in">Tanggal Gate In</Label>
-              <Input
-                type="date"
-                {...register('tgl_gate_in')}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="jam_gate_in">Jam Gate In</Label>
-              <Input
-                type="time"
-                {...register('jam_gate_in')}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tgl_gate_out">Tanggal Gate Out</Label>
-              <Input
-                type="date"
-                {...register('tgl_gate_out')}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="jam_gate_out">Jam Gate Out</Label>
-              <Input
-                type="time"
-                {...register('jam_gate_out')}
-              />
-            </div>
-
-            <div className="col-span-full space-y-2">
-              <Label htmlFor="keterangan">Keterangan</Label>
-              <Textarea
-                {...register('keterangan')}
-                placeholder="Masukkan keterangan tambahan"
-                rows={3}
-              />
+              <div className="col-span-full space-y-2">
+                <Label htmlFor="keterangan">Keterangan Umum</Label>
+                <Textarea
+                  {...register('keterangan')}
+                  placeholder="Catatan umum dokumen"
+                  rows={2}
+                />
+              </div>
             </div>
           </CardContent>
+          <div className="px-6 py-4 bg-slate-50/50 dark:bg-slate-900/50 border-t flex justify-end">
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => setActiveTab('tangki')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Lanjut ke Detail Tangki
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
         </Card>
+      )}
 
-        {/* Tangki Details */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Detail Tangki</CardTitle>
+        {/* Tab 2: Tangki Details */}
+        {activeTab === 'tangki' && (
+          <Card className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center">
+                  <Package className="w-5 h-5 mr-2 text-blue-500" />
+                  Detail Tangki
+                </CardTitle>
               <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  Import Excel
-                </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white border-none shadow-md transition-all duration-200"
+                    onClick={() => window.open('/documents/template/download', '_blank')}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Template
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Import Excel
+                  </Button>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -559,10 +682,12 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     <Label>Kode Dok IN/OUT *</Label>
                     <select
                       {...register(`tangki.${index}.kd_dok_inout` as const)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                        entryMode === 'IN' ? 'border-blue-200' : entryMode === 'OUT' ? 'border-orange-200' : ''
+                      }`}
                     >
                       <option value="">Pilih Kode Dok IN/OUT</option>
-                      {referenceData.kdDokInout?.map((item) => (
+                      {filteredKdDokInout?.map((item) => (
                         <option key={item.kd_dok_inout} value={item.kd_dok_inout}>
                           {item.kd_dok_inout} - {item.nm_dok_inout} {item.jenis ? `(${item.jenis})` : ''}
                         </option>
@@ -944,7 +1069,143 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
               </div>
             ))}
           </CardContent>
+          <div className="px-6 py-4 bg-slate-50/50 dark:bg-slate-900/50 border-t flex justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setActiveTab('header')}
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Kembali
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => setActiveTab('gate')}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Lanjut ke Waktu Gate
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
         </Card>
+      )}
+
+      {/* Tab 3: Gate & Confirmation */}
+      {activeTab === 'gate' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Clock className="w-5 h-5 mr-2 text-blue-500" />
+                Informasi Operasional & Gerbang
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="tgl_tiba">Tanggal Tiba</Label>
+                <Input
+                  type="date"
+                  {...register('tgl_tiba')}
+                />
+              </div>
+
+              <div className="hidden md:block"></div>
+
+              {(entryMode === 'IN' || entryMode === 'ALL') && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="tgl_gate_in">Tanggal Gate In</Label>
+                    <Input
+                      type="date"
+                      {...register('tgl_gate_in')}
+                      className="border-blue-200 dark:border-blue-900/30"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="jam_gate_in">Jam Gate In</Label>
+                    <Input
+                      type="time"
+                      {...register('jam_gate_in')}
+                      className="border-blue-200 dark:border-blue-900/30"
+                    />
+                  </div>
+                </>
+              )}
+
+              {(entryMode === 'OUT' || entryMode === 'ALL') && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="tgl_gate_out">Tanggal Gate Out</Label>
+                    <Input
+                      type="date"
+                      {...register('tgl_gate_out')}
+                      className="border-orange-200 dark:border-orange-900/30"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="jam_gate_out">Jam Gate Out</Label>
+                    <Input
+                      type="time"
+                      {...register('jam_gate_out')}
+                      className="border-orange-200 dark:border-orange-900/30"
+                    />
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Review Card */}
+          <Card className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30">
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold flex items-center text-blue-700 dark:text-blue-400">
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Ringkasan Sebelum Menyimpan
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <Label className="text-xs text-slate-500">Tipe Flow</Label>
+                <div className="font-medium text-slate-900 dark:text-slate-100 flex items-center">
+                  {entryMode === 'IN' ? 'MASUK' : entryMode === 'OUT' ? 'KELUAR' : 'CAMPURAN'}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-slate-500">Kode Dokumen</Label>
+                <div className="font-medium text-slate-900 dark:text-slate-100">{watch('kd_dok') || '-'}</div>
+              </div>
+              <div>
+                <Label className="text-xs text-slate-500">Total Tangki</Label>
+                <div className="font-medium text-slate-900 dark:text-slate-100">{fields.length} Tangki</div>
+              </div>
+              <div>
+                <Label className="text-xs text-slate-500">Lokasi</Label>
+                <div className="font-medium text-slate-900 dark:text-slate-100 truncate">{watch('kd_gudang') || '-'}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setActiveTab('tangki')}
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Kembali ke Tangki
+            </Button>
+            {hasHeaderError || hasTangkiError ? (
+              <div className="flex items-center text-red-500 text-xs gap-1 font-medium italic">
+                <AlertCircle className="w-4 h-4" />
+                Ada kesalahan di tab sebelumnya
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
 
         {/* Submit Buttons */}
         <div className="flex justify-end gap-4">

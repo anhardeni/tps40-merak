@@ -26,7 +26,8 @@ class ExportController extends Controller
         try {
             $document = Document::findOrFail($id);
 
-            // Authorization handled by role:admin middleware in routes
+            // 🛡️ SECURITY FIX: Prevent IDOR (Broken Access Control)
+            abort_if(!auth()->user()->hasRole(['super-admin', 'admin']) && $document->created_by !== auth()->id(), 403, 'Unauthorized access to this document.');
 
             $xml = $this->xmlJsonService->generateXML($document);
             $filename = 'document_'.$document->ref_number.'_'.now()->format('YmdHis').'.xml';
@@ -57,7 +58,8 @@ class ExportController extends Controller
         try {
             $document = Document::findOrFail($id);
 
-            // Authorization handled by role:admin middleware in routes
+            // 🛡️ SECURITY FIX: Prevent IDOR
+            abort_if(!auth()->user()->hasRole(['super-admin', 'admin']) && $document->created_by !== auth()->id(), 403, 'Unauthorized access to this document.');
 
             $json = $this->xmlJsonService->generateJSON($document);
             $filename = 'document_'.$document->ref_number.'_'.now()->format('YmdHis').'.json';
@@ -88,6 +90,9 @@ class ExportController extends Controller
         try {
             $document = Document::findOrFail($id);
 
+            // 🛡️ SECURITY FIX: Prevent IDOR
+            abort_if(!auth()->user()->hasRole(['super-admin', 'admin']) && $document->created_by !== auth()->id(), 403, 'Unauthorized access to this document.');
+
             $xml = $this->xmlJsonService->generateXML($document);
 
             return response($xml, 200, [
@@ -109,6 +114,9 @@ class ExportController extends Controller
     {
         try {
             $document = Document::findOrFail($id);
+
+            // 🛡️ SECURITY FIX: Prevent IDOR
+            abort_if(!auth()->user()->hasRole(['super-admin', 'admin']) && $document->created_by !== auth()->id(), 403, 'Unauthorized access to this document.');
 
             $json = $this->xmlJsonService->generateJSON($document);
 
@@ -143,6 +151,19 @@ class ExportController extends Controller
                     'success' => false,
                     'message' => 'No documents found',
                 ], 404);
+            }
+
+            // 🛡️ SECURITY FIX: Prevent IDOR (Bulk Validation)
+            if (!auth()->user()->hasRole(['super-admin', 'admin'])) {
+                $unauthorized = $documents->contains(function ($doc) {
+                    return $doc->created_by !== auth()->id();
+                });
+                if ($unauthorized) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unauthorized access to one or more documents.',
+                    ], 403);
+                }
             }
 
             $exportData = [];

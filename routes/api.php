@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ExportController;
+use App\Http\Controllers\Api\MonitoringController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SoapController;
 use App\Http\Controllers\Api\TangkiController;

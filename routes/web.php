@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\MonitoringController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\LogController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -25,6 +27,10 @@ Route::get('/dashboard', function () {
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::get('/monitoring', function () {
+    return Inertia::render('Monitoring/Index');
+})->middleware(['auth', 'verified'])->name('monitoring.index');
+
 Route::middleware('auth')->group(function () {
     // Documents Routes - Using Resource Controller
     Route::resource('documents', \App\Http\Controllers\DocumentController::class)->except(['destroy']);
@@ -34,6 +40,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/documents/{document}/tangki', [\App\Http\Controllers\DocumentController::class, 'appendTangki'])->name('documents.append-tangki');
     
     // Import Excel Routes
+    Route::get('/documents/template/download', [\App\Http\Controllers\DocumentController::class, 'downloadTemplate'])->name('documents.template.download');
     Route::post('/documents/parse-tangki-excel', [\App\Http\Controllers\DocumentController::class, 'parseTangkiExcel'])->name('documents.parse-tangki-excel');
     Route::post('/documents/{document}/import-tangki', [\App\Http\Controllers\DocumentController::class, 'importTangki'])->name('documents.import-tangki');
 
@@ -83,37 +90,9 @@ Route::middleware('auth')->group(function () {
     });
 
     // Logs Routes
-    Route::get('/logs', function () {
-        return Inertia::render('Logs/Index');
-    })->name('logs.index');
-
-    Route::get('/logs/errors', function () {
-        return Inertia::render('Logs/Errors');
-    })->name('logs.errors');
-
-    Route::get('/logs/soap', function () {
-        $logs = \App\Models\SoapLog::latest()->paginate(50);
-
-        return Inertia::render('Logs/SoapLogs', [
-            'logs' => [
-                'data' => $logs->items(),
-                'meta' => [
-                    'current_page' => $logs->currentPage(),
-                    'from' => $logs->firstItem(),
-                    'last_page' => $logs->lastPage(),
-                    'per_page' => $logs->perPage(),
-                    'to' => $logs->lastItem(),
-                    'total' => $logs->total(),
-                ],
-                'links' => [
-                    'first' => $logs->url(1),
-                    'last' => $logs->url($logs->lastPage()),
-                    'prev' => $logs->previousPageUrl(),
-                    'next' => $logs->nextPageUrl(),
-                ],
-            ],
-        ]);
-    })->name('logs.soap');
+    Route::get('/logs', [LogController::class, 'index'])->name('logs.index');
+    Route::get('/logs/errors', [LogController::class, 'errors'])->name('logs.errors');
+    Route::get('/logs/soap', [LogController::class, 'soapLogs'])->name('logs.soap');
 
     // Admin Routes (Requires manage.users permission)
     Route::prefix('admin')->middleware('permission:manage.users')->group(function () {
@@ -211,6 +190,18 @@ Route::middleware('auth')->group(function () {
         Route::get('/appearance', function () {
             return Inertia::render('Settings/Appearance');
         })->name('settings.appearance');
+    });
+
+    // Monitoring Routes (moved from api.php to support session auth)
+    Route::prefix('api/monitoring')->name('monitoring.')->group(function () {
+        Route::get('failed-data', [MonitoringController::class, 'checkFailedData'])
+            ->name('failed-data');
+        Route::get('sent-data', [MonitoringController::class, 'checkSentData'])
+            ->name('sent-data');
+        Route::get('sppb-by-date', [MonitoringController::class, 'checkSppbByDate'])
+            ->name('sppb-by-date');
+        Route::get('reject-data', [MonitoringController::class, 'checkRejectData'])
+            ->name('reject-data');
     });
 
     // Profile Routes

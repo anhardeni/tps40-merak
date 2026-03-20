@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { dashboard } from '@/routes';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, FileText, Folder, LayoutGrid, TestTube, FileWarning, Users, Shield, Settings, Database, PanelLeft, Key } from 'lucide-react';
+import { Activity, BookOpen, FileText, Folder, LayoutGrid, TestTube, FileWarning, Users, Shield, Settings, Database, PanelLeft, Key } from 'lucide-react';
 import AppLogoIcon from './app-logo-icon';
 
 const mainNavItems: NavItem[] = [
@@ -24,6 +24,11 @@ const mainNavItems: NavItem[] = [
         title: 'CoCoTangki',
         href: '/cocotangki',
         icon: Database,
+    },
+    {
+        title: 'Monitoring',
+        href: '/monitoring',
+        icon: Activity,
     },
     {
         title: 'Logs',

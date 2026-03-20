@@ -260,8 +260,13 @@ class SoapClientService
     private function parseXmlResponse(string $xml): array
     {
         try {
+            // 🛡️ SECURITY FIX: Prevent XXE (XML External Entity) Attacks
+            if (\PHP_VERSION_ID < 80000) {
+                libxml_disable_entity_loader(true);
+            }
+            
             $dom = new \DOMDocument;
-            $dom->loadXML($xml);
+            $dom->loadXML($xml, LIBXML_NONET);
 
             // Convert to SimpleXML for easier parsing
             $simpleXml = simplexml_import_dom($dom);
@@ -308,6 +313,120 @@ class SoapClientService
                 'message' => 'Failed to connect to SOAP endpoint: '.$e->getMessage(),
                 'status_code' => $e->getCode(),
             ];
+        }
+    }
+
+    /**
+     * Cek Data Gagal Terkirim
+     */
+    public function cekDataGagalKirim(string $tglAwal, string $tglAkhir): array
+    {
+        return $this->performMonitoringRequest('CekDataGagalKirim', [
+            'Tgl_Awal' => $tglAwal,
+            'Tgl_Akhir' => $tglAkhir
+        ]);
+    }
+
+    /**
+     * Cek Data Terkirim
+     */
+    public function cekDataTerkirim(string $tglAwal, string $tglAkhir): array
+    {
+        return $this->performMonitoringRequest('CekDataTerkirim', [
+            'Tgl_Awal' => $tglAwal,
+            'Tgl_Akhir' => $tglAkhir
+        ]);
+    }
+
+    /**
+     * Cek Data SPPB Berdasarkan Tanggal (General/TPB)
+     */
+    public function monitorSppbByDate(string $tanggal, bool $isTpb = false): array
+    {
+        $method = $isTpb ? 'CekDataSPPB_TPB' : 'CekDataSPPB';
+        return $this->performMonitoringRequest($method, [
+            'Tgl_SPPB' => $tanggal // Format dd-mm-yyyy
+        ]);
+    }
+
+    /**
+     * Cek Data Reject (Sistem TPS Online DJBC)
+     */
+    public function getRejectData(string $kdTps): array
+    {
+        return $this->performMonitoringRequest('GetRejectData', [
+            'Kd_Tps' => $kdTps
+        ]);
+    }
+
+    /**
+     * Perform Monitoring SOAP Request with custom namespace and logic
+     */
+    private function performMonitoringRequest(string $method, array $params): array
+    {
+        $requestTime = now();
+        $namespace = 'http://services.beacukai.go.id/';
+        
+        // Build XML
+        $soapXml = '<?xml version="1.0" encoding="utf-8"?>
+        <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+                       xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+                       xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+          <soap:Body>
+            <' . $method . ' xmlns="' . $namespace . '">
+              <UserName>' . htmlspecialchars($this->username) . '</UserName>
+              <Password>' . htmlspecialchars($this->password) . '</Password>';
+              
+        foreach ($params as $key => $value) {
+            $soapXml .= '<' . $key . '>' . htmlspecialchars($value) . '</' . $key . '>';
+        }
+        
+        $soapXml .= '
+            </' . $method . '>
+          </soap:Body>
+        </soap:Envelope>';
+
+        $logData = [
+            'method' => $method,
+            'endpoint' => $this->endpoint,
+            'request_data' => array_merge(['UserName' => $this->username], $params),
+            'request_xml' => $soapXml,
+            'request_time' => $requestTime,
+            'user_id' => Auth::id(),
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ];
+
+        try {
+            $startTime = microtime(true);
+            $response = $this->client->post($this->endpoint, [
+                'body' => $soapXml,
+                'headers' => ['SOAPAction' => $namespace . $method],
+            ]);
+
+            $endTime = microtime(true);
+            $duration = round(($endTime - $startTime) * 1000);
+            $responseXml = $response->getBody()->getContents();
+            $responseData = $this->parseXmlResponse($responseXml);
+
+            $this->logSoapRequest(array_merge($logData, [
+                'response_data' => $responseData,
+                'response_xml' => $responseXml,
+                'response_time' => now(),
+                'response_code' => $response->getStatusCode(),
+                'response_status' => 'SUCCESS',
+                'duration_ms' => $duration
+            ]));
+
+            return ['success' => true, 'data' => $responseData, 'duration' => $duration];
+        } catch (GuzzleException $e) {
+            $this->logSoapRequest(array_merge($logData, [
+                'response_time' => now(),
+                'response_code' => $e->getCode(),
+                'response_status' => 'ERROR',
+                'error_message' => $e->getMessage()
+            ]));
+            return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 }

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TangkiImport;
+use App\Exports\TangkiTemplateExport;
 
 class DocumentController extends Controller
 {
@@ -753,5 +754,12 @@ class DocumentController extends Controller
             'jenisSatuan' => ReferensiJenisSatuan::select('kode_satuan_barang', 'nama_satuan_barang')->get(),
             'jenisKemasan' => ReferensiJenisKemasan::select('kode_jenis_kemasan', 'nama_jenis_kemasan')->get(),
         ];
+    }
+    /**
+     * Download Excel template for Tangki import
+     */
+    public function downloadTemplate()
+    {
+        return Excel::download(new TangkiTemplateExport, 'template_tangki_beacukai.xlsx');
     }
 }
