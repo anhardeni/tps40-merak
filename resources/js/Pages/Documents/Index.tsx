@@ -70,7 +70,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
   const [dateTo, setDateTo] = useState(filters.date_to || '')
 
   const handleSearch = () => {
-    router.get('/documents', { 
+    router.get('/documents', {
       search: search || undefined,
       status: status || undefined,
       date_from: dateFrom || undefined,
@@ -130,9 +130,12 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
               Kelola dokumen Tempat Penimbunan Sementara
             </p>
           </div>
-          <Button onClick={() => router.get('/documents/create')}>
-            <Plus className="w-4 h-4 mr-2" />
-            Tambah Dokumen
+          <Button
+            onClick={() => router.get('/documents/create')}
+            className="h-14 px-10 rounded-2xl bg-gradient-to-br from-orange-400 via-orange-500 to-amber-600 hover:from-orange-500 hover:via-orange-600 hover:to-amber-700 text-white font-black text-base shadow-2xl shadow-orange-500/40 border-none transition-all hover:scale-[1.02] active:scale-95 group"
+          >
+            <Plus className="w-6 h-6 mr-3 stroke-[3] group-hover:rotate-90 transition-transform duration-300" />
+            <span className="tracking-tighter">ENTRY DOKUMEN BARU</span>
           </Button>
         </div>
 
@@ -141,7 +144,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
           <div className="h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 w-full" />
           <CardContent className="p-6 md:p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 items-end">
-              
+
               {/* Search Field - Takes 4/12 */}
               <div className="lg:col-span-4 space-y-2.5">
                 <div className="flex items-center gap-2 mb-1">
@@ -153,7 +156,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                   <Input
                     id="search"
                     placeholder="Ref No, Kode Dok, atau angkutan..."
-                    className="pl-11 h-12 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all text-sm font-medium shadow-inner"
+                    className="pl-11 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white dark:focus:bg-slate-700 transition-all text-sm font-bold text-slate-900 dark:text-white shadow-inner"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -179,40 +182,43 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
               </div>
 
               {/* Date Box - Unified Section - Takes 4/12 */}
-              <div className="lg:col-span-4 grid grid-cols-2 gap-3 bg-indigo-50/50 dark:bg-indigo-900/10 p-3 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-indigo-400 tracking-tighter ml-1">Dari Tgl</Label>
-                  <Input 
-                    type="date" 
+              <div className="lg:col-span-4 grid grid-cols-2 gap-3 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/10 p-3 rounded-2xl border border-orange-100 dark:border-orange-900/30 relative overflow-hidden group/date mt-4 lg:mt-0">
+                <div className="absolute top-0 right-0 p-1 opacity-10">
+                  <Calendar className="w-8 h-8 text-orange-500 rotate-12" />
+                </div>
+                <div className="space-y-1.5 relative z-10">
+                  <Label className="text-[10px] font-black uppercase text-orange-500 dark:text-orange-400 tracking-tighter ml-1">Dari Tgl</Label>
+                  <Input
+                    type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    className="h-9 rounded-xl border-none bg-white/80 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs font-bold"
+                    className="h-9 rounded-xl border-none bg-white/90 dark:bg-slate-900/50 focus:ring-2 focus:ring-orange-500/20 transition-all text-xs font-bold text-slate-900 dark:text-white"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-indigo-400 tracking-tighter ml-1">Sampai Tgl</Label>
-                  <Input 
-                    type="date" 
+                <div className="space-y-1.5 relative z-10">
+                  <Label className="text-[10px] font-black uppercase text-orange-500 dark:text-orange-400 tracking-tighter ml-1">Sampai Tgl</Label>
+                  <Input
+                    type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    className="h-9 rounded-xl border-none bg-white/80 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs font-bold"
+                    className="h-9 rounded-xl border-none bg-white/90 dark:bg-slate-900/50 focus:ring-2 focus:ring-orange-500/20 transition-all text-xs font-bold text-slate-900 dark:text-white"
                   />
                 </div>
               </div>
 
               {/* Actions - Takes 2/12 */}
               <div className="lg:col-span-2 flex gap-2">
-                <Button 
-                    variant="ghost" 
-                    onClick={handleReset} 
-                    className="h-12 w-12 rounded-2xl hover:bg-rose-50 hover:text-rose-500 shrink-0 border border-slate-100 dark:border-slate-800 transition-colors"
-                    title="Reset Filter"
+                <Button
+                  variant="ghost"
+                  onClick={handleReset}
+                  className="h-12 w-12 rounded-2xl hover:bg-rose-50 hover:text-rose-500 shrink-0 border border-slate-100 dark:border-slate-800 transition-colors"
+                  title="Reset Filter"
                 >
                   <X className="w-5 h-5" />
                 </Button>
-                <Button 
-                    onClick={handleSearch} 
-                    className="h-12 flex-1 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
+                <Button
+                  onClick={handleSearch}
+                  className="h-12 flex-1 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
                 >
                   <Search className="w-4 h-4 mr-2" />
                   FILTER
@@ -231,8 +237,8 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
             {documents.data.length === 0 ? (
               <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                 <p>Tidak ada dokumen ditemukan</p>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="mt-4"
                   onClick={() => router.get('/documents/create')}
                 >
@@ -284,15 +290,14 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                                 <Badge variant="secondary">{document.tangki_count}</Badge>
                               </td>
                               <td className="p-4">
-                                <Badge 
+                                <Badge
                                   variant={statusConfig[document.status.toLowerCase()]?.variant || 'secondary'}
                                   className="flex items-center gap-1 w-fit"
                                 >
                                   <StatusIcon className="w-3 h-3" />
                                   {statusConfig[document.status.toLowerCase()]?.label || document.status}
                                 </Badge>
-                              </td>
-                              <td className="p-4">
+                              </td><td className="p-4">
                                 <div className="flex items-center gap-2">
                                   <Button
                                     variant="ghost"
@@ -302,8 +307,8 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                                   >
                                     <Eye className="w-4 h-4" />
                                   </Button>
-                                  
-                                  {document.status === 'draft' && (
+
+                                  {document.status.toLowerCase() === 'draft' && (
                                     <>
                                       <Button
                                         variant="ghost"
@@ -311,30 +316,30 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                                         onClick={() => router.get(`/documents/${document.id}/edit`)}
                                         title="Edit"
                                       >
-                                        <Edit className="w-4 h-4" />
+                                        <Edit className="w-4 h-4 text-blue-500" />
                                       </Button>
-                                      
+
                                       <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleSubmit(document.id)}
                                         title="Submit"
                                       >
-                                        <Send className="w-4 h-4" />
+                                        <Send className="w-4 h-4 text-emerald-500" />
                                       </Button>
-                                      
+
                                       <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleDelete(document.id)}
                                         title="Hapus"
-                                        className="text-red-500 hover:text-red-600"
+                                        className="text-rose-500 hover:text-rose-600"
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </Button>
                                     </>
                                   )}
-                                  
+
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -345,19 +350,19 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                                   </Button>
 
                                   {(auth.user.roles?.some((role) => role.name === 'admin') ||
-                                    auth.user.roles?.some((role) => 
+                                    auth.user.roles?.some((role) =>
                                       role.permissions?.some((perm) => perm.name === 'export.json')
                                     )
                                   ) && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
-                                      title="Preview JSON"
-                                    >
-                                      <FileJson className="w-4 h-4" />
-                                    </Button>
-                                  )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
+                                        title="Preview JSON"
+                                      >
+                                        <FileJson className="w-4 h-4" />
+                                      </Button>
+                                    )}
                                 </div>
                               </td>
                             </tr>
@@ -381,7 +386,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                               {formatDateTime(document.created_at)}
                             </div>
                           </div>
-                          <Badge 
+                          <Badge
                             variant={statusConfig[document.status.toLowerCase()]?.variant || 'secondary'}
                             className="flex items-center gap-1"
                           >
@@ -389,7 +394,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                             {statusConfig[document.status.toLowerCase()]?.label || document.status}
                           </Badge>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                           <div>
                             <span className="text-slate-500">Kode Dok:</span>
@@ -408,7 +413,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                             <span className="ml-1">{formatDate(document.tgl_entry)}</span>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center gap-2 pt-2 border-t">
                           <Button
                             variant="outline"
@@ -418,18 +423,39 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                             <Eye className="w-4 h-4 mr-1" />
                             Detail
                           </Button>
-                          
-                          {document.status === 'draft' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => router.get(`/documents/${document.id}/edit`)}
-                            >
-                              <Edit className="w-4 h-4 mr-1" />
-                              Edit
-                            </Button>
+
+                          {document.status.toLowerCase() === 'draft' && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.get(`/documents/${document.id}/edit`)}
+                              >
+                                <Edit className="w-4 h-4 mr-1 text-blue-500" />
+                                Edit
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSubmit(document.id)}
+                              >
+                                <Send className="w-4 h-4 mr-1 text-emerald-500" />
+                                Submit
+                              </Button>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(document.id)}
+                                className="text-rose-500 hover:text-rose-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-1" />
+                                Hapus
+                              </Button>
+                            </>
                           )}
-                          
+
                           <Button
                             variant="outline"
                             size="sm"
@@ -439,19 +465,19 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                           </Button>
 
                           {(auth.user.roles?.some((role) => role.name === 'admin') ||
-                            auth.user.roles?.some((role) => 
+                            auth.user.roles?.some((role) =>
                               role.permissions?.some((perm) => perm.name === 'export.json')
                             )
                           ) && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
-                              title="Preview JSON"
-                            >
-                              <FileJson className="w-4 h-4" />
-                            </Button>
-                          )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
+                                title="Preview JSON"
+                              >
+                                <FileJson className="w-4 h-4" />
+                              </Button>
+                            )}
                         </div>
                       </Card>
                     )

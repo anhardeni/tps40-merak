@@ -237,13 +237,46 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-100 dark:border-slate-800 pb-6">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight dark:text-slate-50">
+          <h1 className="text-4xl font-black text-slate-900 tracking-tighter dark:text-slate-50 uppercase">
             {document ? 'Edit Dokumen' : 'Entry Dokumen Baru'}
           </h1>
-          <p className="text-slate-500 mt-1">Silakan lengkapi informasi dokumen di bawah ini.</p>
+          <p className="text-slate-400 mt-2 font-medium flex items-center gap-2 italic">
+            <Info className="w-4 h-4" />
+            Lengkapi data manifest & pergerakan tangki TPS
+          </p>
         </div>
+
+        {/* Compact Flow Selection - iPhone 17 Style */}
+        <div className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl flex items-center shadow-inner border border-slate-200 dark:border-slate-800 min-w-[320px]">
+            <button
+                type="button"
+                onClick={() => setFlowType('IN')}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-300 font-black text-[11px] tracking-widest ${
+                flowType === 'IN' 
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' 
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+            >
+                <LogIn className={`w-4 h-4 ${flowType === 'IN' ? 'animate-pulse' : ''}`} />
+                GATE IN
+            </button>
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1" />
+            <button
+                type="button"
+                onClick={() => setFlowType('OUT')}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-300 font-black text-[11px] tracking-widest ${
+                flowType === 'OUT' 
+                    ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' 
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+            >
+                GATE OUT
+                <LogOut className={`w-4 h-4 ${flowType === 'OUT' ? 'animate-pulse' : ''}`} />
+            </button>
+        </div>
+      </div>
         <div className="flex flex-wrap gap-2">
           {document && (
             <div className="flex gap-2">
@@ -268,7 +301,6 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
             </div>
           )}
         </div>
-      </div>
 
       {message && (
         <div className={`p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm border ${
@@ -281,40 +313,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
         </div>
       )}
 
-      {/* Flow Selection - Context Aware UI */}
-      <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl border-2 border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden">
-        <div className="flex items-center">
-          <button
-            type="button"
-            onClick={() => setFlowType('IN')}
-            className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-xl transition-all duration-300 font-extrabold text-sm tracking-wider uppercase ${
-              flowType === 'IN' 
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-[1.02] z-10' 
-                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-            }`}
-          >
-            <LogIn className={`w-5 h-5 ${flowType === 'IN' ? 'animate-bounce-x' : ''}`} />
-            ARUS MASUK / GATE IN
-          </button>
-          
-          <div className="px-4 text-slate-300 dark:text-slate-700">
-            <ArrowRightLeft className="w-5 h-5" />
-          </div>
 
-          <button
-            type="button"
-            onClick={() => setFlowType('OUT')}
-            className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-xl transition-all duration-300 font-extrabold text-sm tracking-wider uppercase ${
-              flowType === 'OUT' 
-                ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30 scale-[1.02] z-10' 
-                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-            }`}
-          >
-            ARUS KELUAR / GATE OUT
-            <LogOut className={`w-5 h-5 ${flowType === 'OUT' ? 'animate-bounce-x-reverse' : ''}`} />
-          </button>
-        </div>
-      </div>
 
       {/* Modern Glass Tab Navigation */}
       <div className="flex p-1 space-x-1 bg-slate-100 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 sticky top-4 z-10 backdrop-blur-md shadow-sm">
@@ -445,17 +444,43 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
         )}
         {activeTab === 'tangki' && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-white dark:bg-slate-900 md:flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 md:space-y-0">
-              <div className="flex flex-wrap gap-2">
+            <div className="bg-slate-900 text-white flex items-center justify-between p-2 rounded-2xl border border-slate-800 shadow-xl">
+              <div className="flex items-center gap-1 pl-4">
+                <Package className="w-5 h-5 text-indigo-400" />
+                <span className="text-[11px] font-black tracking-widest uppercase ml-2">Kontrol Data Tangki</span>
+              </div>
+              
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
-                  variant="outline"
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white border-transparent shadow-sm"
+                  variant="ghost"
+                  className="h-10 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-white transition-colors px-4"
+                  onClick={() => window.open('/documents/template/download', '_blank')}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Template
+                </Button>
+                
+                <Button
+                  type="button"
+                  className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider px-6 transition-all active:scale-95"
                   onClick={() => window.document.getElementById('excel-import')?.click()}
                 >
                   <FileUp className="w-4 h-4 mr-2" />
-                  Import XLSX/CSV
+                  Import Data
                 </Button>
+
+                <div className="w-px h-6 bg-slate-800 mx-1" />
+
+                <Button 
+                    type="button" 
+                    onClick={addTangki} 
+                    className={`h-10 rounded-xl ${flowType === 'IN' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-amber-500 hover:bg-amber-600'} text-white text-[10px] font-black uppercase tracking-wider px-6 transition-all active:scale-95 shadow-lg ${flowType === 'IN' ? 'shadow-blue-500/20' : 'shadow-amber-500/20'}`}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tambah Baris
+                </Button>
+
                 <input
                   id="excel-import"
                   type="file"
@@ -494,20 +519,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     e.target.value = '';
                   }}
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="text-slate-600"
-                  onClick={() => window.open('/documents/template/download', '_blank')}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Template Excel
-                </Button>
               </div>
-              <Button type="button" variant="outline" onClick={addTangki} className={`${accentClass} hover:${bgAccent}`}>
-                <Plus className="w-4 h-4 mr-2" />
-                Tambah Baris Tangki
-              </Button>
             </div>
             <div className="space-y-4">
               {fields.map((field: any, index: number) => (

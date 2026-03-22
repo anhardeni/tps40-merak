@@ -25,8 +25,8 @@ interface SoapLog {
   endpoint: string
   request_data: string
   response_data: string
-  status: 'success' | 'error'
-  response_time: number
+  response_status: 'SUCCESS' | 'ERROR' | 'success' | 'error'
+  duration_ms: number
   created_at: string
 }
 
@@ -162,8 +162,8 @@ export default function SoapLogs({ auth, soapLogs, filters }: SoapLogsProps) {
                   className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
                 >
                   <option value="">All Status</option>
-                  <option value="success">Success</option>
-                  <option value="error">Error</option>
+                  <option value="SUCCESS">Success</option>
+                  <option value="ERROR">Error</option>
                 </select>
               </div>
 
@@ -246,24 +246,24 @@ export default function SoapLogs({ auth, soapLogs, filters }: SoapLogsProps) {
                             </td>
                             <td className="p-4">
                               <Badge 
-                                variant={log.status === 'success' ? 'success' : 'destructive'}
-                                className="flex items-center gap-1 w-fit"
+                                variant={log.response_status?.toLowerCase() === 'success' ? 'success' : 'destructive'}
+                                className="flex items-center gap-1 w-fit uppercase"
                               >
-                                {log.status === 'success' ? (
+                                {log.response_status?.toLowerCase() === 'success' ? (
                                   <CheckCircle className="w-3 h-3" />
                                 ) : (
                                   <XCircle className="w-3 h-3" />
                                 )}
-                                {log.status}
+                                {log.response_status}
                               </Badge>
                             </td>
                             <td className="p-4">
                               <span className={`text-sm ${
-                                log.response_time > 2000 ? 'text-red-600' :
-                                log.response_time > 1000 ? 'text-yellow-600' :
+                                log.duration_ms > 2000 ? 'text-red-600' :
+                                log.duration_ms > 1000 ? 'text-yellow-600' :
                                 'text-green-600'
                               }`}>
-                                {formatResponseTime(log.response_time)}
+                                {formatResponseTime(log.duration_ms)}
                               </span>
                             </td>
                             <td className="p-4">
@@ -295,15 +295,15 @@ export default function SoapLogs({ auth, soapLogs, filters }: SoapLogsProps) {
                           </div>
                         </div>
                         <Badge 
-                          variant={log.status === 'success' ? 'success' : 'destructive'}
-                          className="flex items-center gap-1"
+                          variant={log.response_status?.toLowerCase() === 'success' ? 'success' : 'destructive'}
+                          className="flex items-center gap-1 uppercase"
                         >
-                          {log.status === 'success' ? (
+                          {log.response_status?.toLowerCase() === 'success' ? (
                             <CheckCircle className="w-3 h-3" />
                           ) : (
                             <XCircle className="w-3 h-3" />
                           )}
-                          {log.status}
+                          {log.response_status}
                         </Badge>
                       </div>
                       
@@ -313,11 +313,11 @@ export default function SoapLogs({ auth, soapLogs, filters }: SoapLogsProps) {
                       
                       <div className="flex items-center justify-between pt-2 border-t">
                         <span className={`text-sm ${
-                          log.response_time > 2000 ? 'text-red-600' :
-                          log.response_time > 1000 ? 'text-yellow-600' :
+                          log.duration_ms > 2000 ? 'text-red-600' :
+                          log.duration_ms > 1000 ? 'text-yellow-600' :
                           'text-green-600'
                         }`}>
-                          {formatResponseTime(log.response_time)}
+                          {formatResponseTime(log.duration_ms)}
                         </span>
                         <Button
                           variant="outline"
@@ -369,8 +369,8 @@ export default function SoapLogs({ auth, soapLogs, filters }: SoapLogsProps) {
                     <h3 className="text-lg font-semibold">SOAP Call Details</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline">{selectedLog.method}</Badge>
-                      <Badge variant={selectedLog.status === 'success' ? 'success' : 'destructive'}>
-                        {selectedLog.status}
+                      <Badge variant={selectedLog.response_status?.toLowerCase() === 'success' ? 'success' : 'destructive'} className="uppercase">
+                        {selectedLog.response_status}
                       </Badge>
                     </div>
                   </div>
@@ -408,7 +408,7 @@ export default function SoapLogs({ auth, soapLogs, filters }: SoapLogsProps) {
                   
                   <div>
                     <Label className="font-semibold">Response Time</Label>
-                    <div className="text-sm mt-1">{formatResponseTime(selectedLog.response_time)}</div>
+                    <div className="text-sm mt-1">{formatResponseTime(selectedLog.duration_ms)}</div>
                   </div>
                   
                   <div>

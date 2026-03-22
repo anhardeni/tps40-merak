@@ -15,6 +15,18 @@ class SoapLog extends Model
     protected $guarded = [];
 
     /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'request_data' => 'array',
+        'response_data' => 'array',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+
+    /**
      * Mutator to censor passwords in XML requests before inserting into database
      */
     public function setRequestXmlAttribute($value)

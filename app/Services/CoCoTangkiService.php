@@ -45,14 +45,14 @@ class CoCoTangkiService
 
         // HEADER Section
         $header = $cocotangki->addChild('HEADER');
-        $header->addChild('KD_DOK', $document->kd_dok ?? '1');
-        $header->addChild('KD_TPS', $document->kd_tps ?? 'DCMT');
-        $header->addChild('NM_ANGKUT', $document->nm_angkut ?? '');
-        $header->addChild('NO_VOY_FLIGHT', $document->no_voy_flight ?? '');
-        $header->addChild('CALL_SIGN', $document->call_sign ?? '');
-        $header->addChild('TGL_TIBA', $this->formatDate($document->tgl_tiba));
-        $header->addChild('KD_GUDANG', $document->kd_gudang ?? '');
-        $header->addChild('REF_NUMBER', $document->ref_number ?? '');
+        $header->addChild('KD_DOK', (string) ($document->kd_dok ?? '1'));
+        $header->addChild('KD_TPS', (string) ($document->kd_tps ?? 'DCMT'));
+        $header->addChild('NM_ANGKUT', (string) ($document->nmAngkut?->nm_angkut ?? $document->nm_angkut ?? ''));
+        $header->addChild('NO_VOY_FLIGHT', (string) ($document->no_voy_flight ?? ''));
+        $header->addChild('CALL_SIGN', (string) ($document->call_sign ?? ''));
+        $header->addChild('TGL_TIBA', (string) $this->formatDate($document->tgl_tiba));
+        $header->addChild('KD_GUDANG', (string) ($document->kd_gudang ?? ''));
+        $header->addChild('REF_NUMBER', (string) ($document->ref_number ?? ''));
 
         // DETIL Section
         $detil = $cocotangki->addChild('DETIL');
@@ -63,26 +63,26 @@ class CoCoTangkiService
         foreach ($tankiList as $tangki) {
             $tangkiNode = $detil->addChild('TANGKI');
 
-            $tangkiNode->addChild('SERI_OUT', $tangki->seri_out ?? '1');
-            $tangkiNode->addChild('NO_BL_AWB', $tangki->no_bl_awb ?? '');
-            $tangkiNode->addChild('TGL_BL_AWB', $this->formatDate($tangki->tgl_bl_awb));
-            $tangkiNode->addChild('ID_CONSIGNEE', $tangki->id_consignee ?? '');
-            $tangkiNode->addChild('CONSIGNEE', $tangki->consignee ?? '');
-            $tangkiNode->addChild('NO_BC11', $tangki->no_bc11 ?? '');
-            $tangkiNode->addChild('TGL_BC11', $this->formatDate($tangki->tgl_bc11));
-            $tangkiNode->addChild('NO_POS_BC11', $tangki->no_pos_bc11 ?? '');
-            $tangkiNode->addChild('NO_TANGKI', $tangki->no_tangki ?? '');
-            $tangkiNode->addChild('JML_SATUAN', $tangki->jml_satuan ?? $tangki->jumlah_isi ?? $tangki->berat_isi ?? '0');
-            $tangkiNode->addChild('JNS_SATUAN', $tangki->jns_satuan ?? 'KGM');
-            $tangkiNode->addChild('KD_DOK_INOUT', $tangki->kd_dok_inout ?? '1');
-            $tangkiNode->addChild('NO_DOK_INOUT', $tangki->no_dok_inout ?? '');
-            $tangkiNode->addChild('TGL_DOK_INOUT', $this->formatDate($tangki->tgl_dok_inout));
-            $tangkiNode->addChild('WK_INOUT', $this->formatDateTime($tangki->wk_inout));
-            $tangkiNode->addChild('KD_SAR_ANGKUT_INOUT', $tangki->kd_sar_angkut_inout ?? '3');
-            $tangkiNode->addChild('NO_POL', $tangki->no_pol ?? '');
-            $tangkiNode->addChild('PEL_MUAT', $tangki->pel_muat ?? '');
-            $tangkiNode->addChild('PEL_TRANSIT', $tangki->pel_transit ?? '');
-            $tangkiNode->addChild('PEL_BONGKAR', $tangki->pel_bongkar ?? '');
+            $tangkiNode->addChild('SERI_OUT', (string) ($tangki->seri_out ?? '1'));
+            $tangkiNode->addChild('NO_BL_AWB', (string) ($tangki->no_bl_awb ?? ''));
+            $tangkiNode->addChild('TGL_BL_AWB', (string) $this->formatDate($tangki->tgl_bl_awb));
+            $tangkiNode->addChild('ID_CONSIGNEE', (string) ($tangki->id_consignee ?? ''));
+            $tangkiNode->addChild('CONSIGNEE', (string) ($tangki->consignee ?? ''));
+            $tangkiNode->addChild('NO_BC11', (string) ($tangki->no_bc11 ?? ''));
+            $tangkiNode->addChild('TGL_BC11', (string) $this->formatDate($tangki->tgl_bc11));
+            $tangkiNode->addChild('NO_POS_BC11', (string) ($tangki->no_pos_bc11 ?? ''));
+            $tangkiNode->addChild('NO_TANGKI', (string) ($tangki->no_tangki ?? ''));
+            $tangkiNode->addChild('JML_SATUAN', (string) ($tangki->jml_satuan ?? $tangki->jumlah_isi ?? $tangki->berat_isi ?? '0'));
+            $tangkiNode->addChild('JNS_SATUAN', (string) ($tangki->jns_satuan ?? 'KGM'));
+            $tangkiNode->addChild('KD_DOK_INOUT', (string) ($tangki->kd_dok_inout ?? '1'));
+            $tangkiNode->addChild('NO_DOK_INOUT', (string) ($tangki->no_dok_inout ?? ''));
+            $tangkiNode->addChild('TGL_DOK_INOUT', (string) $this->formatDate($tangki->tgl_dok_inout));
+            $tangkiNode->addChild('WK_INOUT', (string) $this->formatDateTime($tangki->wk_inout));
+            $tangkiNode->addChild('KD_SAR_ANGKUT_INOUT', (string) ($tangki->kd_sar_angkut_inout ?? '3'));
+            $tangkiNode->addChild('NO_POL', (string) ($tangki->no_pol ?? ''));
+            $tangkiNode->addChild('PEL_MUAT', (string) ($tangki->pel_muat ?? ''));
+            $tangkiNode->addChild('PEL_TRANSIT', (string) ($tangki->pel_transit ?? ''));
+            $tangkiNode->addChild('PEL_BONGKAR', (string) ($tangki->pel_bongkar ?? ''));
         }
 
         // Format XML dengan indentasi yang proper
@@ -117,19 +117,15 @@ class CoCoTangkiService
 
             $startTime = microtime(true);
 
-            // Prepare SOAP request with credentials
+            // Prepare SOAP request with corrected namespace and method from Log 14
             $soapEnvelope = $this->buildSoapEnvelope($xmlData, $document->ref_number);
 
-            // Send HTTP request with authentication
+            // Send HTTP request with correct SOAPAction for CoCoTangki
             $response = Http::timeout($this->timeout)
                 ->withHeaders([
                     'Content-Type' => 'text/xml; charset=utf-8',
-                    'SOAPAction' => 'http://tempuri.org/SubmitCoCoTangki',
+                    'SOAPAction' => 'http://services.beacukai.go.id/CoCoTangki',
                 ])
-                ->withBasicAuth(
-                    $this->credential->username,
-                    $this->credential->getDecryptedPassword()
-                )
                 ->send('POST', $this->endpoint, [
                     'body' => $soapEnvelope,
                 ]);
@@ -138,7 +134,7 @@ class CoCoTangkiService
 
             // Log SOAP request/response
             $this->logSoapTransaction(
-                'SubmitCoCoTangki',
+                'CoCoTangki',
                 $soapEnvelope,
                 $response->body(),
                 $response->successful() ? 'success' : 'error',
@@ -314,15 +310,19 @@ class CoCoTangkiService
      */
     private function buildSoapEnvelope(string $xmlData, string $refNumber): string
     {
+        $username = $this->credential ? $this->credential->username : '';
+        $password = $this->credential ? $this->credential->getDecryptedPassword() : '';
+
         return '<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
                xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
                xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
     <soap:Body>
-        <SubmitCoCoTangki xmlns="http://tempuri.org/">
-            <refNumber>'.htmlspecialchars($refNumber).'</refNumber>
-            <xmlData><![CDATA['.$xmlData.']]></xmlData>
-        </SubmitCoCoTangki>
+        <CoCoTangki xmlns="http://services.beacukai.go.id/">
+            <fStream><![CDATA['.$xmlData.']]></fStream>
+            <Username>'.htmlspecialchars($username).'</Username>
+            <Password>'.htmlspecialchars($password).'</Password>
+        </CoCoTangki>
     </soap:Body>
 </soap:Envelope>';
     }
@@ -336,8 +336,11 @@ class CoCoTangkiService
             $xml = simplexml_load_string($soapResponse);
             $xml->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
 
-            // Extract result from SOAP response
-            $result = $xml->xpath('//SubmitCoCoTangkiResult');
+            // Find the result tag in the SOAP response
+            $result = $xml->xpath('//CoCoTangkiResult');
+            if (empty($result)) {
+                $result = $xml->xpath('//CoCoTangkiResponse');
+            }
 
             if (! empty($result)) {
                 return [
@@ -347,9 +350,13 @@ class CoCoTangkiService
                 ];
             }
 
+            Log::error('CoCoTangki response result not found', [
+                'response' => $soapResponse,
+            ]);
+
             return [
-                'status' => 'unknown',
-                'message' => 'Response tidak dapat diparse',
+                'status' => 'error',
+                'message' => 'Response result not found',
                 'raw_response' => $soapResponse,
             ];
 
@@ -370,10 +377,21 @@ class CoCoTangkiService
         SoapLog::create([
             'method' => $method,
             'endpoint' => $this->endpoint,
-            'request_data' => $request,
-            'response_data' => $response,
-            'status' => $status,
-            'response_time' => $responseTime,
+            'request_data' => [
+                'service' => 'CoCoTangki',
+                'method' => $method,
+                'ref_number' => request()->route('document')?->ref_number,
+            ],
+            'request_xml' => $request,
+            'request_time' => now(), // Required by database
+            'response_data' => [
+                'status' => $status,
+                'message' => $errorMessage,
+            ],
+            'response_xml' => $response,
+            'response_time' => now(), // Required by database
+            'response_status' => strtoupper($status),
+            'duration_ms' => $responseTime,
             'error_message' => $errorMessage,
             'user_id' => auth()->id(),
         ]);
@@ -414,6 +432,7 @@ class CoCoTangkiService
 
             return $carbon->format('YmdHis').$offset;
         } catch (\Exception $e) {
+            Log::warning('XML Formatting Error: '.$e->getMessage());
             return '';
         }
     }

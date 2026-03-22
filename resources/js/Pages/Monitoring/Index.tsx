@@ -13,7 +13,7 @@ export default function MonitoringIndex() {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('failed');
     const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-    
+
     // States for data
     const [failedData, setFailedData] = useState<any>(null);
     const [sentData, setSentData] = useState<any>(null);
@@ -132,9 +132,9 @@ export default function MonitoringIndex() {
     const renderRefNumbers = (resp: any) => {
         const refNo = resp?.REF_NO?.RN;
         if (!refNo) return <p className="text-sm text-gray-500 italic">Tidak ada rincian REF_NUMBER</p>;
-        
+
         const rnList = Array.isArray(refNo) ? refNo : [refNo];
-        
+
         return (
             <div className="mt-4 border rounded-md overflow-hidden shadow-sm">
                 <div className="bg-slate-50 border-b p-2 text-xs font-bold flex items-center gap-2">
@@ -156,12 +156,12 @@ export default function MonitoringIndex() {
     const renderSppbNumbers = (resp: any) => {
         if (!resp) return null;
         if (typeof resp === 'string') return <p className="text-sm text-amber-600 font-medium bg-amber-50 p-3 rounded-md border border-amber-200">{resp}</p>;
-        
+
         const sppbNoList = resp?.SPPB_NO?.DT;
         if (!sppbNoList) return <p className="text-sm text-gray-500 italic">Tidak ada rincian nomor SPPB</p>;
-        
+
         const dtList = Array.isArray(sppbNoList) ? sppbNoList : [sppbNoList];
-        
+
         return (
             <div className="mt-4 border rounded-md overflow-hidden bg-white shadow-sm">
                 <div className="bg-blue-50 border-b p-2 text-xs font-bold flex items-center gap-2 text-blue-700">
@@ -263,8 +263,8 @@ export default function MonitoringIndex() {
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
                                     "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all whitespace-nowrap",
-                                    activeTab === tab.id 
-                                        ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400" 
+                                    activeTab === tab.id
+                                        ? "bg-white dark:bg-gray-700 shadow-sm text-blue-600 dark:text-blue-400"
                                         : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                                 )}
                             >
@@ -286,10 +286,10 @@ export default function MonitoringIndex() {
                                     <div className="flex flex-wrap items-end gap-4">
                                         <div className="space-y-2">
                                             <Label>Tanggal Awal</Label>
-                                            <Input 
-                                                type="date" 
-                                                value={failedForm.start} 
-                                                onChange={(e) => setFailedForm({...failedForm, start: e.target.value})}
+                                            <Input
+                                                type="date"
+                                                value={failedForm.start}
+                                                onChange={(e) => setFailedForm({ ...failedForm, start: e.target.value })}
                                             />
                                         </div>
                                         <div className="flex items-center h-10 text-gray-400">
@@ -297,10 +297,10 @@ export default function MonitoringIndex() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Tanggal Akhir</Label>
-                                            <Input 
-                                                type="date" 
-                                                value={failedForm.end} 
-                                                onChange={(e) => setFailedForm({...failedForm, end: e.target.value})}
+                                            <Input
+                                                type="date"
+                                                value={failedForm.end}
+                                                onChange={(e) => setFailedForm({ ...failedForm, end: e.target.value })}
                                             />
                                         </div>
                                         <Button onClick={handleCheckFailed} disabled={loading} className="gap-2">
@@ -355,10 +355,10 @@ export default function MonitoringIndex() {
                                     <div className="flex flex-wrap items-end gap-4">
                                         <div className="space-y-2">
                                             <Label>Tanggal Awal</Label>
-                                            <Input 
-                                                type="date" 
-                                                value={sentForm.start} 
-                                                onChange={(e) => setSentForm({...sentForm, start: e.target.value})}
+                                            <Input
+                                                type="date"
+                                                value={sentForm.start}
+                                                onChange={(e) => setSentForm({ ...sentForm, start: e.target.value })}
                                             />
                                         </div>
                                         <div className="flex items-center h-10 text-gray-400">
@@ -366,10 +366,10 @@ export default function MonitoringIndex() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Tanggal Akhir</Label>
-                                            <Input 
-                                                type="date" 
-                                                value={sentForm.end} 
-                                                onChange={(e) => setSentForm({...sentForm, end: e.target.value})}
+                                            <Input
+                                                type="date"
+                                                value={sentForm.end}
+                                                onChange={(e) => setSentForm({ ...sentForm, end: e.target.value })}
                                             />
                                         </div>
                                         <Button onClick={handleCheckSent} disabled={loading} className="gap-2 bg-green-600 hover:bg-green-700">
@@ -424,19 +424,19 @@ export default function MonitoringIndex() {
                                     <div className="flex flex-wrap items-end gap-4">
                                         <div className="space-y-2">
                                             <Label>Tanggal SPPB</Label>
-                                            <Input 
-                                                type="date" 
-                                                value={sppbForm.date} 
-                                                onChange={(e) => setSppbForm({...sppbForm, date: e.target.value})}
+                                            <Input
+                                                type="date"
+                                                value={sppbForm.date}
+                                                onChange={(e) => setSppbForm({ ...sppbForm, date: e.target.value })}
                                             />
                                         </div>
                                         <div className="flex items-center gap-2 h-10 self-end mb-1">
-                                            <input 
-                                                type="checkbox" 
-                                                id="isTpb" 
+                                            <input
+                                                type="checkbox"
+                                                id="isTpb"
                                                 className="h-4 w-4 rounded border-gray-300 text-blue-600"
                                                 checked={sppbForm.isTpb}
-                                                onChange={(e) => setSppbForm({...sppbForm, isTpb: e.target.checked})}
+                                                onChange={(e) => setSppbForm({ ...sppbForm, isTpb: e.target.checked })}
                                             />
                                             <Label htmlFor="isTpb" className="font-normal cursor-pointer">Cek khusus TPB</Label>
                                         </div>
@@ -474,10 +474,10 @@ export default function MonitoringIndex() {
                                         <div className="mt-6 border rounded-lg p-4 bg-slate-50/50 shadow-sm border-dashed">
                                             <h4 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Info Sinkronisasi</h4>
                                             <div className="flex items-center justify-between">
-                                                 <p className="text-xs text-slate-600">Status koneksi DJBC:</p>
-                                                 <div className="flex items-center gap-2 text-green-600 text-xs font-bold">
-                                                     <CheckCircle2 className="h-3 w-3" /> Aktif
-                                                 </div>
+                                                <p className="text-xs text-slate-600">Status koneksi DJBC:</p>
+                                                <div className="flex items-center gap-2 text-green-600 text-xs font-bold">
+                                                    <CheckCircle2 className="h-3 w-3" /> Aktif
+                                                </div>
                                             </div>
                                         </div>
                                     </CardContent>
@@ -500,11 +500,11 @@ export default function MonitoringIndex() {
                                     <div className="flex flex-wrap items-end gap-4">
                                         <div className="space-y-2 flex-1 min-w-[200px]">
                                             <Label htmlFor="kdTps">Kode TPS</Label>
-                                            <Input 
+                                            <Input
                                                 id="kdTps"
-                                                placeholder="Masukkan Kode TPS (Contoh: KOJA)" 
-                                                value={rejectForm.kd_tps} 
-                                                onChange={(e) => setRejectForm({...rejectForm, kd_tps: e.target.value.toUpperCase()})}
+                                                placeholder="Masukkan Kode TPS (Contoh: KOJA)"
+                                                value={rejectForm.kd_tps}
+                                                onChange={(e) => setRejectForm({ ...rejectForm, kd_tps: e.target.value.toUpperCase() })}
                                             />
                                         </div>
                                         <Button onClick={handleCheckReject} disabled={loading} className="gap-2 bg-red-600 hover:bg-red-700">
