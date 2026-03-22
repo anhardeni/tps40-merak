@@ -35,9 +35,7 @@ interface SoapLogsProps {
   soapLogs: {
     data: SoapLog[]
     links: any[]
-    from?: number
-    to?: number
-    total?: number
+    meta: any
   }
   filters: {
     status?: string
@@ -205,7 +203,7 @@ export default function SoapLogs({ auth, soapLogs, filters }: SoapLogsProps) {
         {/* SOAP Logs Table */}
         <Card>
           <CardHeader>
-            <CardTitle>SOAP API Calls ({soapLogs.total || 0})</CardTitle>
+            <CardTitle>SOAP API Calls ({soapLogs.meta.total})</CardTitle>
           </CardHeader>
           <CardContent>
             {soapLogs.data.length === 0 ? (
@@ -338,7 +336,7 @@ export default function SoapLogs({ auth, soapLogs, filters }: SoapLogsProps) {
                 {soapLogs.links && soapLogs.links.length > 3 && (
                   <div className="flex items-center justify-between pt-4">
                     <div className="text-sm text-slate-600 dark:text-slate-400">
-                      Showing {soapLogs.from || 0} - {soapLogs.to || 0} of {soapLogs.total || 0} logs
+                      Showing {soapLogs.meta.from} - {soapLogs.meta.to} of {soapLogs.meta.total} logs
                     </div>
                     <div className="flex items-center gap-2">
                       {soapLogs.links.map((link: any, index: number) => (

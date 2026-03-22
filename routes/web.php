@@ -1,8 +1,7 @@
 <?php
 
-use App\Http\Controllers\Api\MonitoringController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\LogController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -27,22 +26,13 @@ Route::get('/dashboard', function () {
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::get('/monitoring', function () {
-    return Inertia::render('Monitoring/Index');
-})->middleware(['auth', 'verified'])->name('monitoring.index');
-
 Route::middleware('auth')->group(function () {
     // Documents Routes - Using Resource Controller
     Route::resource('documents', \App\Http\Controllers\DocumentController::class)->except(['destroy']);
     Route::delete('/documents/{document}', [\App\Http\Controllers\DocumentController::class, 'destroy'])->name('documents.destroy');
     Route::post('/documents/{document}/submit', [\App\Http\Controllers\DocumentController::class, 'submit'])->name('documents.submit');
-    // Append tangki to an existing document (used by modal on document show page)
-    Route::post('/documents/{document}/tangki', [\App\Http\Controllers\DocumentController::class, 'appendTangki'])->name('documents.append-tangki');
-    
-    // Import Excel Routes
-    Route::get('/documents/template/download', [\App\Http\Controllers\DocumentController::class, 'downloadTemplate'])->name('documents.template.download');
-    Route::post('/documents/parse-tangki-excel', [\App\Http\Controllers\DocumentController::class, 'parseTangkiExcel'])->name('documents.parse-tangki-excel');
-    Route::post('/documents/{document}/import-tangki', [\App\Http\Controllers\DocumentController::class, 'importTangki'])->name('documents.import-tangki');
+    Route::post('/documents/import', [\App\Http\Controllers\DocumentController::class, 'import'])->name('documents.import');
+    Route::get('/documents/template/download', [\App\Http\Controllers\DocumentController::class, 'downloadTemplate'])->name('documents.download-template');
 
     // Export Routes - Preview and Download XML/JSON
     Route::prefix('api/export')->name('export.')->group(function () {
@@ -60,8 +50,6 @@ Route::middleware('auth')->group(function () {
         Route::middleware('permission:export.json')->group(function () {
             Route::post('documents/bulk', [\App\Http\Controllers\Api\ExportController::class, 'bulkExport'])->name('bulk');
             Route::post('documents/{id}/send-to-host', [\App\Http\Controllers\Api\ExportController::class, 'sendToHost'])->name('send-to-host');
-            Route::post('documents/{id}/resend-to-host', [\App\Http\Controllers\Api\ExportController::class, 'resendToHost'])->name('resend-to-host');
-            Route::get('documents/{id}/transmission-history', [\App\Http\Controllers\Api\ExportController::class, 'transmissionHistory'])->name('transmission-history');
         });
     });
 
@@ -91,7 +79,9 @@ Route::middleware('auth')->group(function () {
 
     // Logs Routes
     Route::get('/logs', [LogController::class, 'index'])->name('logs.index');
+
     Route::get('/logs/errors', [LogController::class, 'errors'])->name('logs.errors');
+
     Route::get('/logs/soap', [LogController::class, 'soapLogs'])->name('logs.soap');
 
     // Admin Routes (Requires manage.users permission)
@@ -159,14 +149,30 @@ Route::middleware('auth')->group(function () {
         // Kode Sarana Angkut In/Out
         Route::resource('kd-sar-angkut-inout', \App\Http\Controllers\Reference\KdSarAngkutInoutController::class);
 
-        // Nama Angkutan - resourceful controller (index, create, store, show, edit, update, destroy)
-        Route::resource('nm-angkut', \App\Http\Controllers\Reference\NmAngkutController::class);
+        // Nama Angkutan (Keep existing route for now)
+        Route::get('/nm-angkut', function () {
+            $nmAngkut = \App\Models\NmAngkut::latest()->paginate(15);
 
-        // Referensi Jenis Satuan
-        Route::resource('jenis-satuan', \App\Http\Controllers\Reference\ReferensiJenisSatuanController::class);
-
-        // Referensi Jenis Kemasan
-        Route::resource('jenis-kemasan', \App\Http\Controllers\Reference\ReferensiJenisKemasanController::class);
+            return Inertia::render('Reference/NmAngkut/Index', [
+                'nmAngkut' => [
+                    'data' => $nmAngkut->items(),
+                    'meta' => [
+                        'current_page' => $nmAngkut->currentPage(),
+                        'from' => $nmAngkut->firstItem(),
+                        'last_page' => $nmAngkut->lastPage(),
+                        'per_page' => $nmAngkut->perPage(),
+                        'to' => $nmAngkut->lastItem(),
+                        'total' => $nmAngkut->total(),
+                    ],
+                    'links' => [
+                        'first' => $nmAngkut->url(1),
+                        'last' => $nmAngkut->url($nmAngkut->lastPage()),
+                        'prev' => $nmAngkut->previousPageUrl(),
+                        'next' => $nmAngkut->nextPageUrl(),
+                    ],
+                ],
+            ]);
+        })->name('reference.nm-angkut.index');
     });
 
     // Settings Routes
@@ -192,17 +198,10 @@ Route::middleware('auth')->group(function () {
         })->name('settings.appearance');
     });
 
-    // Monitoring Routes (moved from api.php to support session auth)
-    Route::prefix('api/monitoring')->name('monitoring.')->group(function () {
-        Route::get('failed-data', [MonitoringController::class, 'checkFailedData'])
-            ->name('failed-data');
-        Route::get('sent-data', [MonitoringController::class, 'checkSentData'])
-            ->name('sent-data');
-        Route::get('sppb-by-date', [MonitoringController::class, 'checkSppbByDate'])
-            ->name('sppb-by-date');
-        Route::get('reject-data', [MonitoringController::class, 'checkRejectData'])
-            ->name('reject-data');
-    });
+    // Monitoring Route
+    Route::get('/monitoring', function () {
+        return Inertia::render('Monitoring/Index');
+    })->name('monitoring.index');
 
     // Profile Routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

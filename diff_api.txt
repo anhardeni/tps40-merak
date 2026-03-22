@@ -1,0 +1,12 @@
+diff --git a/routes/api.php b/routes/api.php
+index e35109b..fc8288d 100644
+--- a/routes/api.php
++++ b/routes/api.php
+@@ -2,6 +2,7 @@
+ 
+ use App\Http\Controllers\Api\DocumentController;
+ use App\Http\Controllers\Api\ExportController;
++use App\Http\Controllers\Api\MonitoringController;
+ use App\Http\Controllers\Api\ReportController;
+ use App\Http\Controllers\Api\SoapController;
+ use App\Http\Controllers\Api\TangkiController;

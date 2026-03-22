@@ -28,7 +28,7 @@ class CoCoTangkiService
             $this->endpoint = $this->credential->endpoint_url;
         } else {
             // Fallback to config if no credential configured
-            $this->endpoint = config('services.cocotangki.endpoint', 'https://tpsonline.beacukai.go.id/tps/service.asmx');
+            $this->endpoint = config('services.cocotangki.endpoint', 'https://tpsonline.beacukai.go.id/cocotangki/service.asmx');
         }
 
         $this->timeout = config('services.cocotangki.timeout', 30);
@@ -120,14 +120,19 @@ class CoCoTangkiService
             // Prepare SOAP request with credentials
             $soapEnvelope = $this->buildSoapEnvelope($xmlData, $document->ref_number);
 
-            // Send HTTP request explicitly with raw body string
+            // Send HTTP request with authentication
             $response = Http::timeout($this->timeout)
                 ->withHeaders([
                     'Content-Type' => 'text/xml; charset=utf-8',
-                    'SOAPAction' => '"http://services.beacukai.go.id/CoCoTangki"',
+                    'SOAPAction' => 'http://tempuri.org/SubmitCoCoTangki',
                 ])
-                ->withBody($soapEnvelope, 'text/xml; charset=utf-8')
-                ->post($this->endpoint);
+                ->withBasicAuth(
+                    $this->credential->username,
+                    $this->credential->getDecryptedPassword()
+                )
+                ->send('POST', $this->endpoint, [
+                    'body' => $soapEnvelope,
+                ]);
 
             $responseTime = round((microtime(true) - $startTime) * 1000, 2);
 
@@ -143,36 +148,11 @@ class CoCoTangkiService
 
             if ($response->successful()) {
                 $responseXml = $this->parseSoapResponse($response->body());
-                $resultMessage = $responseXml['result'] ?? ($responseXml['raw_response'] ?? 'Response diterima');
 
-                // Bea Cukai SOAP kadang me-return HTTP 200 Tapi isinya "Gagal..." atau "Error..."
-                $isBusinessError = stripos($resultMessage, 'gagal') !== false || stripos($resultMessage, 'error') !== false;
-
-                if ($isBusinessError) {
-                    // Update document status ke error jika ternyata balasan XML-nya GAGAL
-                    $document->update([
-                        'cocotangki_status' => 'error',
-                        'cocotangki_error' => $resultMessage,
-                        'cocotangki_response' => $responseXml,
-                    ]);
-
-                    Log::warning('CoCoTangki: Sent but received Business Error for document ID: '.$document->id, [
-                        'response' => $resultMessage
-                    ]);
-
-                    return [
-                        'success' => false,
-                        'message' => 'Ditolak BeaCukai: ' . $resultMessage,
-                        'response_time' => $responseTime,
-                        'error' => $resultMessage,
-                    ];
-                }
-
-                // Update document status jika 100% Berhasil
+                // Update document status jika berhasil
                 $document->update([
                     'cocotangki_sent_at' => now(),
                     'cocotangki_status' => 'sent',
-                    'cocotangki_error' => null, // <-- Hapus error lama!
                     'cocotangki_response' => $responseXml,
                 ]);
 
@@ -334,17 +314,15 @@ class CoCoTangkiService
      */
     private function buildSoapEnvelope(string $xmlData, string $refNumber): string
     {
-        // Disesuaikan persis dengan skema SOAP dari Bea Cukai
         return '<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
                xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
                xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
     <soap:Body>
-        <CoCoTangki xmlns="http://services.beacukai.go.id/">
-            <fStream><![CDATA['.$xmlData.']]></fStream>
-            <Username>'.htmlspecialchars($this->credential->username ?? '').'</Username>
-            <Password>'.htmlspecialchars($this->credential->getDecryptedPassword() ?? '').'</Password>
-        </CoCoTangki>
+        <SubmitCoCoTangki xmlns="http://tempuri.org/">
+            <refNumber>'.htmlspecialchars($refNumber).'</refNumber>
+            <xmlData><![CDATA['.$xmlData.']]></xmlData>
+        </SubmitCoCoTangki>
     </soap:Body>
 </soap:Envelope>';
     }
@@ -358,8 +336,8 @@ class CoCoTangkiService
             $xml = simplexml_load_string($soapResponse);
             $xml->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
 
-            // Extract result from SOAP response (Usually ActionResult)
-            $result = $xml->xpath('//*[local-name()="CoCoTangkiResult"]');
+            // Extract result from SOAP response
+            $result = $xml->xpath('//SubmitCoCoTangkiResult');
 
             if (! empty($result)) {
                 return [
@@ -384,19 +362,18 @@ class CoCoTangkiService
         }
     }
 
+    /**
+     * Log SOAP transaction
+     */
     private function logSoapTransaction(string $method, string $request, string $response, string $status, float $responseTime, ?string $errorMessage = null): void
     {
         SoapLog::create([
             'method' => $method,
             'endpoint' => $this->endpoint,
-            'request_xml' => $request,
-            'request_data' => json_encode(['payload' => 'XML payload in request_xml']),
-            'request_time' => now()->subMilliseconds($responseTime),
-            'response_xml' => $response,
-            'response_data' => json_encode(['payload' => 'XML response in response_xml']),
-            'response_status' => $status === 'success' ? 'SUCCESS' : 'ERROR',
-            'response_time' => now(),
-            'duration_ms' => $responseTime,
+            'request_data' => $request,
+            'response_data' => $response,
+            'status' => $status,
+            'response_time' => $responseTime,
             'error_message' => $errorMessage,
             'user_id' => auth()->id(),
         ]);

@@ -64,48 +64,32 @@ class LogController extends Controller
         $query = \App\Models\SoapLog::query();
 
         // Filter by status
-        if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('response_status', $request->status);
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
         }
 
         // Filter by date range
-        if ($request->filled('date_from')) {
+        if ($request->has('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
 
-        if ($request->filled('date_to')) {
+        if ($request->has('date_to')) {
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
         // Search functionality
-        if ($request->filled('search')) {
+        if ($request->has('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('method', 'like', "%{$search}%")
                     ->orWhere('endpoint', 'like', "%{$search}%")
                     ->orWhere('request_data', 'like', "%{$search}%")
-                    ->orWhere('response_data', 'like', "%{$search}%")
-                    ->orWhere('request_xml', 'like', "%{$search}%")
-                    ->orWhere('response_xml', 'like', "%{$search}%")
-                    ->orWhere('error_message', 'like', "%{$search}%");
+                    ->orWhere('response_data', 'like', "%{$search}%");
             });
         }
 
         $soapLogs = $query->orderBy('created_at', 'desc')
             ->paginate(25)
-            ->through(function ($log) {
-                return [
-                    'id' => $log->id,
-                    'method' => $log->method ?: '-',
-                    'endpoint' => $log->endpoint ?: '-',
-                    // Merge XML and JSON if needed, or fallback
-                    'request_data' => $log->request_xml ?: ($log->request_data ?: ''),
-                    'response_data' => $log->response_xml ?: ($log->response_data ?: ''),
-                    'status' => strtolower($log->response_status ?? 'unknown'),
-                    'response_time' => (int) ($log->duration_ms ?? 0),
-                    'created_at' => $log->created_at ? $log->created_at->toIso8601String() : null,
-                ];
-            })
             ->withQueryString();
 
         return Inertia::render('Logs/SoapLogs', [
@@ -197,12 +181,9 @@ class LogController extends Controller
             'method' => 'CekDataSPPB',
             'endpoint' => 'https://tpsonline.beacukai.go.id/tps/service.asmx',
             'request_data' => json_encode(['sppb_number' => 'TEST001', 'test' => true]),
-            'request_xml' => '<test>request</test>',
-            'request_time' => now(),
             'response_data' => json_encode(['status' => 'success', 'data' => 'Test response']),
-            'response_xml' => '<test>response</test>',
-            'response_status' => 'SUCCESS',
-            'duration_ms' => 150,
+            'status' => 'success',
+            'response_time' => 150.5,
         ]);
 
         return back()->with('success', 'Test log entries created successfully');

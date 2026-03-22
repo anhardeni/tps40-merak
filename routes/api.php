@@ -166,6 +166,14 @@ Route::middleware(['auth:sanctum,web'])->group(function () {
             ],
         ]);
     })->name('dashboard.stats');
+
+    // Monitoring Routes
+    Route::prefix('monitoring')->name('monitoring.')->group(function () {
+        Route::get('failed-data', [MonitoringController::class, 'checkFailedData']);
+        Route::get('sent-data', [MonitoringController::class, 'checkSentData']);
+        Route::get('sppb-by-date', [MonitoringController::class, 'checkSppbByDate']);
+        Route::get('reject-data', [MonitoringController::class, 'checkRejectData']);
+    });
 });
 
 // Public routes (jika ada)

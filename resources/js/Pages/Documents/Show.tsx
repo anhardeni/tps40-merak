@@ -1,16 +1,13 @@
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
 import { Head } from '@inertiajs/react'
 import { router } from '@inertiajs/react'
 import AppLayout from '@/Layouts/app-layout'
 import { Button } from "@/Components/ui/button"
-import { Input } from '@/Components/ui/input'
-import { Label } from '@/Components/ui/label'
-import { Dialog, DialogTrigger, DialogContent, DialogTitle } from '@/Components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card"
 import { Badge } from "@/Components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select"
 import { PageProps } from '@/types'
-import {
+import { 
   Edit,
   Download,
   Send,
@@ -21,8 +18,8 @@ import {
   Eye,
   FileJson,
   Upload,
-  FileSpreadsheet,
-  Plus
+  Info,
+  Package
 } from "lucide-react"
 
 interface Document {
@@ -85,109 +82,29 @@ interface Document {
 
 interface ShowDocumentProps extends PageProps {
   document: Document
-  kdDokInout?: Array<{ kd_dok_inout: string; nm_dok_inout: string; jenis?: string }>
-  jenisSatuan?: Array<{ kode_satuan_barang: string; nama_satuan_barang: string }>
-  jenisKemasan?: Array<{ kode_jenis_kemasan: string; nama_jenis_kemasan: string }>
 }
 
-const statusConfig = {
-  draft: { label: 'Draft', variant: 'secondary' as const, icon: Clock },
-  submitted: { label: 'Disubmit', variant: 'default' as const, icon: Send },
-  approved: { label: 'Disetujui', variant: 'success' as const, icon: CheckCircle },
-  rejected: { label: 'Ditolak', variant: 'destructive' as const, icon: XCircle },
-  completed: { label: 'Selesai', variant: 'success' as const, icon: CheckCircle }
+const statusConfig: Record<string, { label: string; variant: 'secondary' | 'default' | 'success' | 'destructive'; icon: any }> = {
+  draft: { label: 'Draft', variant: 'secondary', icon: Clock },
+  submitted: { label: 'Disubmit', variant: 'default', icon: Send },
+  approved: { label: 'Disetujui', variant: 'success', icon: CheckCircle },
+  rejected: { label: 'Ditolak', variant: 'destructive', icon: XCircle },
+  completed: { label: 'Selesai', variant: 'success', icon: CheckCircle }
 };
 
-export default function ShowDocument({ auth, document, kdDokInout, jenisSatuan, jenisKemasan }: ShowDocumentProps) {
-  const StatusIcon = statusConfig[document.status].icon
+export default function ShowDocument({ auth, document }: ShowDocumentProps) {
+  const [activeTab, setActiveTab] = useState<'header' | 'tangki' | 'waktu'>('header')
+  const StatusIcon = statusConfig[document.status.toLowerCase()]?.icon || Clock
   const [transmissionFormat, setTransmissionFormat] = useState<'xml' | 'json'>('xml')
   const [isSending, setIsSending] = useState(false)
-  const [isResending, setIsResending] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
-  const [transmissionHistory, setTransmissionHistory] = useState<any[]>([])
-  const [isAddOpen, setIsAddOpen] = useState(false)
-  const [isAdding, setIsAdding] = useState(false)
-  const [newTangki, setNewTangki] = useState({
-    kd_dok_inout: '',
-    no_tangki: '',
-    jenis_isi: '',
-    kapasitas: 0,
-    jumlah_isi: 0,
-    satuan: 'LITER',
-    kondisi: 'BAIK',
-    no_bl_awb: '',
-    no_pol: '',
-    keterangan: '',
-    // New fields
-    seri_out: 0,
-    tgl_bl_awb: '',
-    id_consignee: '',
-    consignee: '',
-    no_bc11: '',
-    tgl_bc11: '',
-    no_pos_bc11: '',
-    no_dok_inout: '',
-    tgl_dok_inout: '',
-    kd_sar_angkut_inout: '',
-    jenis_kemasan: '',
-    jml_satuan: 0,
-    jns_satuan: '',
-    pel_muat: '',
-    pel_transit: '',
-    pel_bongkar: '',
-    panjang: 0,
-    lebar: 0,
-    tinggi: 0,
-    berat_kosong: 0,
-    berat_isi: 0,
-    lokasi_penempatan: '',
-    wk_inout: '',
-    tgl_produksi: '',
-    tgl_expired: '',
-    no_segel_bc: '',
-    no_segel_perusahaan: '',
-  })
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handleImportTangki = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    if (!confirm('Apakah Anda yakin ingin mengimport data tangki dari file ini? Data akan ditambahkan ke dokumen ini.')) {
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      return
-    }
-
-    const formData = new FormData()
-    formData.append('file', file)
-
-    try {
-      const response = await fetch(`/documents/${document.id}/import-tangki`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-        },
-      })
-
-      const result = await response.json()
-
-      if (response.ok && result.success) {
-        alert(`Berhasil mengimport ${result.count} data tangki.`)
-        router.reload({ only: ['document'] })
-      } else {
-        alert('Gagal mengimport file: ' + (result.message || 'Unknown error'))
-      }
-    } catch (error) {
-      console.error('Error importing file:', error)
-      alert('Terjadi kesalahan saat mengimport file.')
-    } finally {
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-    }
-  }
+  // Context-aware theme detection
+  const isOutFlow = ['3', '4', '5', '7', 'OUT', 'SPPB'].includes(document.kd_dok) || document.tangki?.[0]?.kd_dok_inout === 'OUT'
+  const flowTheme = isOutFlow ? 'amber' : 'blue'
+  const flowAccent = isOutFlow ? 'text-amber-600' : 'text-blue-600'
+  const flowBg = isOutFlow ? 'bg-amber-100' : 'bg-blue-100'
+  const flowBorder = isOutFlow ? 'border-amber-200' : 'border-blue-200'
+  const flowShadow = isOutFlow ? 'shadow-amber-500/20' : 'shadow-blue-500/20'
 
   const handleSubmit = () => {
     if (confirm('Apakah Anda yakin ingin submit dokumen ini?')) {
@@ -213,38 +130,6 @@ export default function ShowDocument({ auth, document, kdDokInout, jenisSatuan, 
     }
   }
 
-  const handleResendToHost = () => {
-    if (confirm(`Kirim ULANG dokumen ke host dalam format ${transmissionFormat.toUpperCase()}?\n\nData sebelumnya akan di-overwrite.`)) {
-      setIsResending(true)
-      router.post(`/api/export/documents/${document.id}/resend-to-host`, {
-        format: transmissionFormat
-      }, {
-        onSuccess: () => {
-          setIsResending(false)
-          router.reload({ only: ['document'] })
-          fetchTransmissionHistory() // Refresh history
-        },
-        onError: (errors) => {
-          setIsResending(false)
-          console.error('Resend to host error:', errors)
-        }
-      })
-    }
-  }
-
-  const fetchTransmissionHistory = async () => {
-    try {
-      const response = await fetch(`/api/export/documents/${document.id}/transmission-history`)
-      const data = await response.json()
-      if (data.success) {
-        setTransmissionHistory(data.logs)
-        setShowHistory(true)
-      }
-    } catch (error) {
-      console.error('Failed to fetch transmission history:', error)
-    }
-  }
-
   const formatDate = (dateString?: string) => {
     return dateString ? new Date(dateString).toLocaleDateString('id-ID') : '-'
   }
@@ -254,7 +139,7 @@ export default function ShowDocument({ auth, document, kdDokInout, jenisSatuan, 
   }
 
   const calculatePercentage = (jumlah: number, kapasitas: number) => {
-    if (kapasitas === 0) return 0
+    if (kapasitas === 0) return "0"
     return ((jumlah / kapasitas) * 100).toFixed(1)
   }
 
@@ -266,888 +151,411 @@ export default function ShowDocument({ auth, document, kdDokInout, jenisSatuan, 
     ]}>
       <Head title={`Document ${document.ref_number}`} />
 
-      <div className="space-y-6 p-4 md:p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.get('/documents')}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Kembali
+      <div className="space-y-6 p-4 md:p-6 max-w-7xl mx-auto">
+        {/* Modern Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all duration-300">
+          <div className="flex items-start gap-4">
+            <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => router.get('/documents')}
+                className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 shrink-0"
+              >
+                <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50">
-                {document.ref_number}
-              </h1>
-              <div className="flex items-center gap-2 mt-2">
-                <Badge
-                  variant={statusConfig[document.status].variant}
-                  className="flex items-center gap-1"
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight dark:text-slate-50">
+                  {document.ref_number}
+                </h1>
+                <Badge 
+                  variant={statusConfig[document.status.toLowerCase()]?.variant || 'secondary'}
+                  className="px-3 py-1 rounded-full flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider shadow-sm ring-1 ring-white/20"
                 >
-                  <StatusIcon className="w-3 h-3" />
-                  {statusConfig[document.status].label}
+                  <StatusIcon className="w-3.5 h-3.5" />
+                  {statusConfig[document.status.toLowerCase()]?.label || document.status}
                 </Badge>
-                <span className="text-sm text-slate-500">
-                  Dibuat {formatDateTime(document.created_at)}
-                </span>
               </div>
+              <p className="text-slate-500 mt-2 flex items-center gap-2 text-sm font-medium">
+                 <Clock className="w-4 h-4 text-slate-400" />
+                 Dibuat pada {formatDateTime(document.created_at)}
+              </p>
             </div>
           </div>
 
-          {/* Action Buttons - Redesigned with better visual hierarchy */}
-          <div className="flex flex-wrap gap-3">
-            {/* Primary Actions Group */}
+          <div className="flex flex-wrap items-center gap-3">
             {document.status === 'draft' && (
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  size="default"
-                  className="border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
                   onClick={() => router.get(`/documents/${document.id}/edit`)}
+                  className="rounded-xl border-slate-200 shadow-sm"
                 >
                   <Edit className="w-4 h-4 mr-2" />
-                  Edit
+                  Edit Data
                 </Button>
-
+                
                 <Button
-                  size="default"
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg transition-all duration-200"
                   onClick={handleSubmit}
+                  className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10 px-6"
                 >
                   <Send className="w-4 h-4 mr-2" />
-                  Submit untuk Approval
+                  Submit Sekarang
                 </Button>
               </div>
             )}
-
-            {/* Export Actions Group */}
-            <div className="flex gap-2">
+            
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
-                size="default"
-                className="border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200"
                 onClick={() => window.open(`/api/export/documents/${document.id}/preview/xml`, '_blank')}
+                className="rounded-xl border-slate-200 shadow-sm"
               >
                 <Eye className="w-4 h-4 mr-2" />
                 Preview XML
               </Button>
               <Button
                 variant="outline"
-                size="default"
-                className="border-green-200 hover:bg-green-50 hover:border-green-300 transition-all duration-200"
                 onClick={() => window.open(`/api/export/documents/${document.id}/download/xml`, '_blank')}
+                className="rounded-xl border-slate-200 shadow-sm"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Download XML
+                Download
               </Button>
             </div>
 
-            {/* Data Management Group - available for Draft, Submitted, or Approved documents */}
-            {(document.status === 'draft' || document.status === 'submitted' || document.status === 'approved') && (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="default"
-                  className="border-purple-200 hover:bg-purple-50 hover:border-purple-300 transition-all duration-200 group"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <FileSpreadsheet className="w-4 h-4 mr-2 group-hover:text-purple-600 transition-colors" />
-                  <span className="font-medium">Import Excel</span>
-                </Button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleImportTangki}
-                />
-                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="default"
-                      size="default"
-                      className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-md hover:shadow-lg transition-all duration-200"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      <span className="font-medium">Tambah Tangki</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogTitle>Tambah Tangki</DialogTitle>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-                      {/* Basic Info */}
-                      <div className="space-y-2">
-                        <Label>No. Tangki *</Label>
-                        <Input value={newTangki.no_tangki} onChange={(e) => setNewTangki({ ...newTangki, no_tangki: e.target.value })} placeholder="Nomor tangki" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Kode Dok IN/OUT *</Label>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
-                          value={newTangki.kd_dok_inout}
-                          onChange={(e) => setNewTangki({ ...newTangki, kd_dok_inout: e.target.value })}
-                        >
-                          <option value="">Pilih Kode Dok IN/OUT</option>
-                          {kdDokInout?.map((item) => (
-                            <option key={item.kd_dok_inout} value={item.kd_dok_inout}>
-                              {item.kd_dok_inout} - {item.nm_dok_inout} {item.jenis ? `(${item.jenis})` : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Jenis Isi *</Label>
-                        <Input value={newTangki.jenis_isi} onChange={(e) => setNewTangki({ ...newTangki, jenis_isi: e.target.value })} placeholder="Jenis isi" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Jenis Kemasan</Label>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
-                          value={newTangki.jenis_kemasan}
-                          onChange={(e) => setNewTangki({ ...newTangki, jenis_kemasan: e.target.value })}
-                        >
-                          <option value="">Pilih Jenis Kemasan</option>
-                          {jenisKemasan?.map((item) => (
-                            <option key={item.kode_jenis_kemasan} value={item.kode_jenis_kemasan}>
-                              {item.kode_jenis_kemasan} - {item.nama_jenis_kemasan}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Kapasitas *</Label>
-                        <Input type="number" step="0.001" value={newTangki.kapasitas} onChange={(e) => setNewTangki({ ...newTangki, kapasitas: parseFloat(e.target.value || '0') })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Jumlah Isi *</Label>
-                        <Input type="number" step="0.001" value={newTangki.jumlah_isi} onChange={(e) => setNewTangki({ ...newTangki, jumlah_isi: parseFloat(e.target.value || '0') })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Satuan *</Label>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
-                          value={newTangki.satuan}
-                          onChange={(e) => setNewTangki({ ...newTangki, satuan: e.target.value })}
-                        >
-                          <option value="LITER">LITER</option>
-                          <option value="KGM">KGM</option>
-                          <option value="M3">M3</option>
-                          <option value="TON">TON</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Jumlah Satuan</Label>
-                        <Input type="number" value={newTangki.jml_satuan} onChange={(e) => setNewTangki({ ...newTangki, jml_satuan: parseFloat(e.target.value || '0') })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Jenis Satuan</Label>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
-                          value={newTangki.jns_satuan}
-                          onChange={(e) => setNewTangki({ ...newTangki, jns_satuan: e.target.value })}
-                        >
-                          <option value="">Pilih Jenis Satuan</option>
-                          {jenisSatuan?.map((item) => (
-                            <option key={item.kode_satuan_barang} value={item.kode_satuan_barang}>
-                              {item.kode_satuan_barang} - {item.nama_satuan_barang}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Kondisi *</Label>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
-                          value={newTangki.kondisi}
-                          onChange={(e) => setNewTangki({ ...newTangki, kondisi: e.target.value })}
-                        >
-                          <option value="BAIK">BAIK</option>
-                          <option value="RUSAK">RUSAK</option>
-                          <option value="BOCOR">BOCOR</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>No. BL/AWB</Label>
-                        <Input value={newTangki.no_bl_awb} onChange={(e) => setNewTangki({ ...newTangki, no_bl_awb: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Tgl. BL/AWB</Label>
-                        <Input type="date" value={newTangki.tgl_bl_awb} onChange={(e) => setNewTangki({ ...newTangki, tgl_bl_awb: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>ID Consignee</Label>
-                        <Input value={newTangki.id_consignee} onChange={(e) => setNewTangki({ ...newTangki, id_consignee: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Consignee</Label>
-                        <Input value={newTangki.consignee} onChange={(e) => setNewTangki({ ...newTangki, consignee: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>No. BC11</Label>
-                        <Input value={newTangki.no_bc11} onChange={(e) => setNewTangki({ ...newTangki, no_bc11: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Tgl. BC11</Label>
-                        <Input type="date" value={newTangki.tgl_bc11} onChange={(e) => setNewTangki({ ...newTangki, tgl_bc11: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>No. Pos BC11</Label>
-                        <Input value={newTangki.no_pos_bc11} onChange={(e) => setNewTangki({ ...newTangki, no_pos_bc11: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>No. Dok In/Out</Label>
-                        <Input value={newTangki.no_dok_inout} onChange={(e) => setNewTangki({ ...newTangki, no_dok_inout: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Tgl. Dok In/Out</Label>
-                        <Input type="date" value={newTangki.tgl_dok_inout} onChange={(e) => setNewTangki({ ...newTangki, tgl_dok_inout: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Kode Sarana Angkut</Label>
-                        <Input value={newTangki.kd_sar_angkut_inout} onChange={(e) => setNewTangki({ ...newTangki, kd_sar_angkut_inout: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>No. Polisi</Label>
-                        <Input value={newTangki.no_pol} onChange={(e) => setNewTangki({ ...newTangki, no_pol: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Pelabuhan Muat</Label>
-                        <Input value={newTangki.pel_muat} onChange={(e) => setNewTangki({ ...newTangki, pel_muat: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Pelabuhan Transit</Label>
-                        <Input value={newTangki.pel_transit} onChange={(e) => setNewTangki({ ...newTangki, pel_transit: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Pelabuhan Bongkar</Label>
-                        <Input value={newTangki.pel_bongkar} onChange={(e) => setNewTangki({ ...newTangki, pel_bongkar: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Panjang (m)</Label>
-                        <Input type="number" step="0.01" value={newTangki.panjang} onChange={(e) => setNewTangki({ ...newTangki, panjang: parseFloat(e.target.value || '0') })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Lebar (m)</Label>
-                        <Input type="number" step="0.01" value={newTangki.lebar} onChange={(e) => setNewTangki({ ...newTangki, lebar: parseFloat(e.target.value || '0') })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Tinggi (m)</Label>
-                        <Input type="number" step="0.01" value={newTangki.tinggi} onChange={(e) => setNewTangki({ ...newTangki, tinggi: parseFloat(e.target.value || '0') })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Berat Kosong (kg)</Label>
-                        <Input type="number" step="0.01" value={newTangki.berat_kosong} onChange={(e) => setNewTangki({ ...newTangki, berat_kosong: parseFloat(e.target.value || '0') })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Berat Isi (kg)</Label>
-                        <Input type="number" step="0.01" value={newTangki.berat_isi} onChange={(e) => setNewTangki({ ...newTangki, berat_isi: parseFloat(e.target.value || '0') })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Lokasi Penempatan</Label>
-                        <Input value={newTangki.lokasi_penempatan} onChange={(e) => setNewTangki({ ...newTangki, lokasi_penempatan: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Waktu In/Out</Label>
-                        <Input type="datetime-local" value={newTangki.wk_inout} onChange={(e) => setNewTangki({ ...newTangki, wk_inout: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Tgl. Produksi</Label>
-                        <Input type="date" value={newTangki.tgl_produksi} onChange={(e) => setNewTangki({ ...newTangki, tgl_produksi: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Tgl. Expired</Label>
-                        <Input type="date" value={newTangki.tgl_expired} onChange={(e) => setNewTangki({ ...newTangki, tgl_expired: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>No. Segel BC</Label>
-                        <Input value={newTangki.no_segel_bc} onChange={(e) => setNewTangki({ ...newTangki, no_segel_bc: e.target.value })} />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>No. Segel Perusahaan</Label>
-                        <Input value={newTangki.no_segel_perusahaan} onChange={(e) => setNewTangki({ ...newTangki, no_segel_perusahaan: e.target.value })} />
-                      </div>
-
-                      <div className="col-span-full space-y-2">
-                        <Label>Keterangan</Label>
-                        <Input value={newTangki.keterangan} onChange={(e) => setNewTangki({ ...newTangki, keterangan: e.target.value })} placeholder="Keterangan tambahan" />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-                      <Button variant="outline" onClick={() => setIsAddOpen(false)}>Batal</Button>
-                      <Button onClick={async () => {
-                        // basic client-side validation
-                        if (!newTangki.kd_dok_inout || !newTangki.no_tangki || !newTangki.jenis_isi) {
-                          alert('Kode Dok IN/OUT, Nomor tangki dan Jenis isi wajib diisi');
-                          return;
-                        }
-                        setIsAdding(true)
-                        router.post(`/documents/${document.id}/tangki`, {
-                          tangki: [newTangki]
-                        }, {
-                          onSuccess: () => {
-                            setIsAdding(false)
-                            setIsAddOpen(false)
-                            router.reload({ only: ['document'] })
-                          },
-                          onError: (errors) => {
-                            setIsAdding(false)
-                            console.error('Add tangki error', errors)
-                            alert('Gagal menambah tangki. Periksa input dan coba lagi.')
-                          }
-                        })
-                      }}>
-                        {isAdding ? 'Menambahkan...' : 'Tambah Tangki'}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            )}
-
-            {(auth.user.roles?.some((role) => role.name === 'admin') ||
-              auth.user.roles?.some((role) =>
+            {(auth.user.roles?.some((role) => role.name === 'admin') || 
+              auth.user.roles?.some((role) => 
                 role.permissions?.some((perm) => perm.name === 'export.json')
               )
             ) && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
-                  >
-                    <FileJson className="w-4 h-4 mr-2" />
-                    Preview JSON
-                  </Button>
+              <div className="flex gap-2 border-l pl-3 ml-1 border-slate-200 dark:border-slate-800">
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
+                  className="rounded-xl border-slate-200 shadow-sm"
+                >
+                  <FileJson className="w-4 h-4 mr-2" />
+                  JSON
+                </Button>
 
-                  <Button
-                    variant="outline"
-                    onClick={() => window.open(`/api/export/documents/${document.id}/download/json`, '_blank')}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download JSON
-                  </Button>
-
-                  {/* Send to Host with Format Selection */}
-                  {document.status === 'approved' && (
-                    <div className="flex items-center gap-2 ml-2 pl-2 border-l">
-                      <Select value={transmissionFormat} onValueChange={(value: 'xml' | 'json') => setTransmissionFormat(value)}>
-                        <SelectTrigger className="w-[110px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="xml">Format XML</SelectItem>
-                          <SelectItem value="json">Format JSON</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      {/* @ts-ignore - sent_to_host may not be in type */}
-                      {!document.sent_to_host ? (
-                        <Button
-                          onClick={handleSendToHost}
-                          disabled={isSending}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Upload className="w-4 h-4 mr-2" />
-                          {isSending ? 'Mengirim...' : 'Send to Host'}
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            onClick={handleResendToHost}
-                            disabled={isResending}
-                            variant="outline"
-                            className="border-orange-500 text-orange-600 hover:bg-orange-50"
-                          >
-                            <Upload className="w-4 h-4 mr-2" />
-                            {isResending ? 'Mengirim Ulang...' : 'Resend to Host'}
-                          </Button>
-                          <Button
-                            onClick={fetchTransmissionHistory}
-                            variant="outline"
-                            size="sm"
-                          >
-                            History ({transmissionHistory.length || '?'})
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                </>
-              )}
+                {document.status === 'approved' && (
+                  <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200 dark:border-slate-800">
+                    <Select value={transmissionFormat} onValueChange={(value: 'xml' | 'json') => setTransmissionFormat(value)}>
+                      <SelectTrigger className="w-[110px] rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="xml">XML Format</SelectItem>
+                        <SelectItem value="json">JSON Format</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Button
+                      onClick={handleSendToHost}
+                      disabled={isSending}
+                      className={`${isOutFlow ? 'bg-amber-500 hover:bg-amber-600' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-xl shadow-lg ${flowShadow} px-6`}
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {isSending ? 'Mengirim...' : 'Send to Host'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Transmission History Modal/Card */}
-        {showHistory && transmissionHistory.length > 0 && (
-          <Card className="mb-6 border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-blue-900 dark:text-blue-100">
-                Riwayat Pengiriman ke Host ({transmissionHistory.length}x)
-              </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowHistory(false)}
-              >
-                ✕ Tutup
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {transmissionHistory.map((log, index) => (
-                  <div
-                    key={log.id}
-                    className="flex items-start gap-4 p-3 bg-white dark:bg-slate-800 rounded-lg border"
-                  >
-                    <div className="flex-shrink-0">
-                      <Badge
-                        variant={log.status === 'success' ? 'success' : log.status === 'failed' ? 'destructive' : 'secondary'}
-                        className="min-w-[80px] justify-center"
-                      >
-                        {log.status === 'success' ? '✓ Success' : log.status === 'failed' ? '✗ Failed' : '⏳ Pending'}
-                      </Badge>
+        {/* Premium Tab Navigation */}
+        <div className="flex p-1 space-x-1 bg-slate-100 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-slate-800 sticky top-4 z-10 backdrop-blur-md shadow-lg shadow-slate-200/20 dark:shadow-none transition-all duration-300">
+          <button
+            onClick={() => setActiveTab('header')}
+            className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${
+              activeTab === 'header' 
+                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700` 
+                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
+            }`}
+          >
+            <Info className="w-4 h-4 mr-2" />
+            Informasi Header
+          </button>
+          <button
+            onClick={() => setActiveTab('tangki')}
+            className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${
+              activeTab === 'tangki' 
+                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700` 
+                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
+            }`}
+          >
+            <Package className="w-4 h-4 mr-2" />
+            Daftar Tangki ({document.tangki.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('waktu')}
+            className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${
+              activeTab === 'waktu' 
+                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700` 
+                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
+            }`}
+          >
+            <Clock className="w-4 h-4 mr-2" />
+            Waktu & Aktivitas
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="mt-6">
+          {activeTab === 'header' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Card className="border-slate-200 shadow-sm overflow-hidden">
+                <div className="bg-slate-50 dark:bg-slate-900 border-b p-4">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <Info className="w-5 h-5 text-blue-500" /> Detail Informasi Header
+                  </CardTitle>
+                </div>
+                <CardContent className="p-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                        Kode Dokumen
+                      </label>
+                      <div className="mt-1">
+                        <Badge variant="outline" className={`text-sm font-bold ${flowBorder} ${flowAccent} ${isOutFlow ? 'bg-amber-50/50' : 'bg-blue-50/50'} px-3`}>{document.kd_dok}</Badge>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">
-                          Pengiriman #{transmissionHistory.length - index}
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          {log.format.toUpperCase()}
-                        </Badge>
-                        {log.response_time && (
-                          <span className="text-xs text-slate-500">
-                            {log.response_time}ms
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                        Kode TPS
+                      </label>
+                      <div className="mt-1">
+                        <Badge variant="outline" className="text-sm font-bold border-emerald-200 text-emerald-700 bg-emerald-50/50 px-3">{document.kd_tps}</Badge>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                        Nama Angkutan
+                      </label>
+                      <div className="mt-1 font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        {document.nm_angkut?.nm_angkut}
+                        {document.nm_angkut?.call_sign && (
+                          <span className="text-slate-400 font-medium">
+                            ({document.nm_angkut.call_sign})
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-slate-600 dark:text-slate-400">
-                        <div>Dikirim: {log.sent_at}</div>
-                        <div>Oleh: {log.sent_by}</div>
-                        {log.transmission_size && (
-                          <div>Ukuran: {(log.transmission_size / 1024).toFixed(2)} KB</div>
-                        )}
-                        {log.error_message && (
-                          <div className="text-red-600 dark:text-red-400 mt-1">
-                            Error: {log.error_message}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Document Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Informasi Header</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Kode Dokumen
-                </label>
-                <div className="mt-1">
-                  <Badge variant="outline">{document.kd_dok}</Badge>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Kode TPS
-                </label>
-                <div className="mt-1">
-                  <Badge variant="outline">{document.kd_tps}</Badge>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Nama Angkutan
-                </label>
-                <div className="mt-1 font-medium">
-                  {document.nm_angkut?.nm_angkut}
-                  {document.nm_angkut?.call_sign && (
-                    <span className="text-slate-500 ml-2">
-                      ({document.nm_angkut.call_sign})
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Kode Gudang
-                </label>
-                <div className="mt-1">
-                  <Badge variant="outline">{document.kd_gudang}</Badge>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  No. VOY/Flight
-                </label>
-                <div className="mt-1 font-medium">
-                  {document.no_voy_flight || '-'}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Tanggal Entry
-                </label>
-                <div className="mt-1 font-medium">
-                  {formatDate(document.tgl_entry)} {document.jam_entry}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Tanggal Tiba
-                </label>
-                <div className="mt-1 font-medium">
-                  {formatDate(document.tgl_tiba)}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Gate In
-                </label>
-                <div className="mt-1 font-medium">
-                  {document.tgl_gate_in ? `${formatDate(document.tgl_gate_in)} ${document.jam_gate_in || ''}` : '-'}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Gate Out
-                </label>
-                <div className="mt-1 font-medium">
-                  {document.tgl_gate_out ? `${formatDate(document.tgl_gate_out)} ${document.jam_gate_out || ''}` : '-'}
-                </div>
-              </div>
-
-              {document.keterangan && (
-                <div className="col-span-full">
-                  <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                    Keterangan
-                  </label>
-                  <div className="mt-1 font-medium">
-                    {document.keterangan}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Tangki Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Detail Tangki ({document.tangki.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {document.tangki.map((tangki, index) => (
-                <div key={tangki.id} className="border rounded-lg p-6 bg-slate-50 dark:bg-slate-900">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-lg">Tangki #{index + 1}</h4>
-                    <Badge variant="outline">{tangki.no_tangki}</Badge>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* Basic Info */}
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        No. BL/AWB
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.no_bl_awb || '-'}</div>
                     </div>
 
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Tgl. BL/AWB
-                      </label>
-                      <div className="mt-1 font-medium">{formatDate(tangki.tgl_bl_awb)}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Consignee
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.consignee || '-'}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        No. BC11
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.no_bc11 || '-'}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Tgl. BC11
-                      </label>
-                      <div className="mt-1 font-medium">{formatDate(tangki.tgl_bc11)}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        No. Pos BC11
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.no_pos_bc11 || '-'}</div>
-                    </div>
-
-                    {/* Dok InOut Info */}
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Kode Dok In/Out
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.kd_dok_inout || '-'}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        No. Dok In/Out
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.no_dok_inout || '-'}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Tgl. Dok In/Out
-                      </label>
-                      <div className="mt-1 font-medium">{formatDate(tangki.tgl_dok_inout)}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        No. Polisi
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.no_pol || '-'}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Seri Out
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.seri_out || '-'}</div>
-                    </div>
-
-                    {/* Content Info */}
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Jenis Isi
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.jenis_isi}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Jenis Kemasan
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.jenis_kemasan || '-'}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Kondisi
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                        Kode Gudang
                       </label>
                       <div className="mt-1">
-                        <Badge variant={tangki.kondisi === 'BAIK' ? 'success' : 'destructive'}>
-                          {tangki.kondisi}
-                        </Badge>
+                        <Badge variant="outline" className="text-sm font-bold px-3">{document.kd_gudang}</Badge>
                       </div>
                     </div>
 
-                    {/* Capacity Info */}
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Kapasitas
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                        No. VOY/Flight
                       </label>
-                      <div className="mt-1 font-medium">
-                        {tangki.kapasitas.toLocaleString('id-ID')} {tangki.satuan}
+                      <div className="mt-1 font-bold text-slate-900 dark:text-slate-100">
+                        {document.no_voy_flight || '-'}
                       </div>
                     </div>
 
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Jumlah Isi
-                      </label>
-                      <div className="mt-1 font-medium">
-                        {tangki.jumlah_isi.toLocaleString('id-ID')} {tangki.satuan}
-                        <span className="text-sm text-slate-500 ml-2">
-                          ({calculatePercentage(tangki.jumlah_isi, tangki.kapasitas)}%)
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Pelabuhan */}
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Pelabuhan Muat
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.pel_muat || '-'}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Pelabuhan Transit
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.pel_transit || '-'}</div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                        Pelabuhan Bongkar
-                      </label>
-                      <div className="mt-1 font-medium">{tangki.pel_bongkar || '-'}</div>
-                    </div>
-
-                    {/* Dimensi (jika ada) */}
-                    {(tangki.panjang || tangki.lebar || tangki.tinggi) && (
-                      <>
-                        <div>
-                          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                            Dimensi (P x L x T)
-                          </label>
-                          <div className="mt-1 font-medium">
-                            {tangki.panjang || 0} x {tangki.lebar || 0} x {tangki.tinggi || 0} m
-                          </div>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Berat (jika ada) */}
-                    {(tangki.berat_kosong || tangki.berat_isi) && (
-                      <>
-                        <div>
-                          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                            Berat Kosong
-                          </label>
-                          <div className="mt-1 font-medium">
-                            {tangki.berat_kosong ? `${tangki.berat_kosong.toLocaleString('id-ID')} kg` : '-'}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                            Berat Isi
-                          </label>
-                          <div className="mt-1 font-medium">
-                            {tangki.berat_isi ? `${tangki.berat_isi.toLocaleString('id-ID')} kg` : '-'}
-                          </div>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Segel */}
-                    {(tangki.no_segel_bc || tangki.no_segel_perusahaan) && (
-                      <>
-                        <div>
-                          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                            No. Segel BC
-                          </label>
-                          <div className="mt-1 font-medium">{tangki.no_segel_bc || '-'}</div>
-                        </div>
-
-                        <div>
-                          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                            No. Segel Perusahaan
-                          </label>
-                          <div className="mt-1 font-medium">{tangki.no_segel_perusahaan || '-'}</div>
-                        </div>
-                      </>
-                    )}
-
-                    {/* Tanggal */}
-                    {(tangki.tgl_produksi || tangki.tgl_expired) && (
-                      <>
-                        <div>
-                          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                            Tgl. Produksi
-                          </label>
-                          <div className="mt-1 font-medium">{formatDate(tangki.tgl_produksi)}</div>
-                        </div>
-
-                        <div>
-                          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                            Tgl. Expired
-                          </label>
-                          <div className="mt-1 font-medium">{formatDate(tangki.tgl_expired)}</div>
-                        </div>
-                      </>
-                    )}
-
-                    {tangki.lokasi_penempatan && (
-                      <div>
-                        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                          Lokasi Penempatan
+                    {document.keterangan && (
+                      <div className="col-span-full pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                          Keterangan Tambahan
                         </label>
-                        <div className="mt-1 font-medium">{tangki.lokasi_penempatan}</div>
-                      </div>
-                    )}
-
-                    {tangki.keterangan && (
-                      <div className="col-span-full">
-                        <label className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                          Keterangan
-                        </label>
-                        <div className="mt-1 font-medium">{tangki.keterangan}</div>
+                        <div className="mt-2 text-slate-600 dark:text-slate-400 leading-relaxed font-medium bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+                          {document.keterangan}
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === 'tangki' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {document.tangki.map((tangki, index) => (
+                <Card key={tangki.id} className="overflow-hidden border-slate-200 shadow-sm group hover:border-blue-300 transition-all duration-300">
+                  <div className="bg-slate-50 dark:bg-slate-900 border-b px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`${flowBg} dark:bg-blue-900/40 ${flowAccent} flex items-center justify-center font-extrabold text-sm ring-4 ring-white dark:ring-slate-800 shadow-sm`}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900 dark:text-slate-50 tracking-tight">DETAIL UNIT TANGKI</h4>
+                        <p className="text-xs font-medium text-slate-400 uppercase tracking-widest">{tangki.no_tangki}</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={`bg-white dark:bg-slate-800 ${flowAccent} ${flowBorder} font-bold px-4 py-1 rounded-lg`}>
+                      {tangki.kondisi}
+                    </Badge>
+                  </div>
+
+                  <CardContent className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                      {/* Section Content */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Jenis Isi & Kemasan</label>
+                        <div className="font-bold text-slate-900 dark:text-slate-50">{tangki.jenis_isi}</div>
+                        <div className="text-xs text-slate-500 font-medium">{tangki.jenis_kemasan || 'N/A'}</div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Kapasitas & Muatan</label>
+                        <div className="font-bold text-slate-900 dark:text-slate-50">
+                          {tangki.jumlah_isi.toLocaleString('id-ID')} / {tangki.kapasitas.toLocaleString('id-ID')}
+                          <span className={`text-xs ${flowAccent} ml-1.5`}>{tangki.satuan}</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full mt-2 overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-1000 ${
+                              parseFloat(calculatePercentage(tangki.jumlah_isi, tangki.kapasitas)) > 90 ? 'bg-rose-500' : (isOutFlow ? 'bg-amber-500' : 'bg-blue-500')
+                            }`}
+                            style={{ width: `${calculatePercentage(tangki.jumlah_isi, tangki.kapasitas)}%` }}
+                          />
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-400 text-right mt-1">{calculatePercentage(tangki.jumlah_isi, tangki.kapasitas)}% Filled</div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Dokumen BL/AWB</label>
+                        <div className="font-bold text-slate-900 dark:text-slate-50">{tangki.no_bl_awb || '-'}</div>
+                        <div className="text-xs text-slate-500 font-medium">{formatDate(tangki.tgl_bl_awb)}</div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Data BC1.1</label>
+                        <div className="font-bold text-slate-900 dark:text-slate-50">{tangki.no_bc11 || '-'}</div>
+                        <div className="text-xs text-slate-500 font-medium">{formatDate(tangki.tgl_bc11)} (Pos: {tangki.no_pos_bc11 || '-'})</div>
+                      </div>
+
+                      {/* Second Row */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Consignee (Penerima)</label>
+                        <div className="font-bold text-slate-900 dark:text-slate-50 uppercase text-xs">{tangki.consignee || '-'}</div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Dimensi & Berat</label>
+                        <div className="text-xs font-bold text-slate-900 dark:text-slate-50">
+                          DIM: {tangki.panjang || 0}x{tangki.lebar || 0}x{tangki.tinggi || 0} m
+                        </div>
+                        <div className="text-xs text-slate-500 font-medium">
+                          BRT: {tangki.berat_kosong || 0}kg (K) / {tangki.berat_isi || 0}kg (I)
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Pelabuhan Muat/Bongkar</label>
+                        <div className="text-xs font-bold text-slate-900 dark:text-slate-50">MUAT: {tangki.pel_muat || '-'}</div>
+                        <div className="text-xs text-slate-500 font-medium">BKR: {tangki.pel_bongkar || '-'}</div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Segel Perusahaan/BC</label>
+                        <div className="text-xs font-bold text-emerald-600">{tangki.no_segel_perusahaan || '-'}</div>
+                        <div className="text-xs font-medium text-slate-400">{tangki.no_segel_bc || '-'}</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          )}
+
+          {activeTab === 'waktu' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Card className={`border-slate-200 shadow-sm overflow-hidden border-l-4 ${isOutFlow ? 'border-l-amber-500' : 'border-l-blue-500'}`}>
+                <div className={`${isOutFlow ? 'bg-amber-50/50' : 'bg-blue-50/50'} dark:bg-blue-900/10 border-b p-4`}>
+                  <CardTitle className={`text-lg font-bold flex items-center gap-2 ${isOutFlow ? 'text-amber-700' : 'text-blue-700'} dark:text-blue-400`}>
+                    <Clock className="w-5 h-5" /> Entry & Kedatangan
+                  </CardTitle>
+                </div>
+                <CardContent className="p-8 space-y-8">
+                  <div className="flex items-center gap-6">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-8 flex-1">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Tanggal Entry</label>
+                        <div className="font-bold text-slate-900 dark:text-slate-50">{formatDate(document.tgl_entry)}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Jam Entry</label>
+                        <div className="font-bold text-slate-900 dark:text-slate-50">{document.jam_entry}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                      <Package className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Estimasi Kedatangan (Tiba)</label>
+                      <div className="font-bold text-slate-900 dark:text-slate-50">{formatDate(document.tgl_tiba)}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className={`border-slate-200 shadow-sm overflow-hidden border-l-4 ${isOutFlow ? 'border-l-amber-500' : 'border-l-emerald-500'}`}>
+                <div className={`${isOutFlow ? 'bg-amber-50/50' : 'bg-emerald-50/50'} dark:bg-emerald-900/10 border-b p-4`}>
+                  <CardTitle className={`text-lg font-bold flex items-center gap-2 ${isOutFlow ? 'text-amber-700' : 'text-emerald-700'} dark:text-emerald-400`}>
+                    <Send className="w-5 h-5" /> Aktivitas Gate In/Out
+                  </CardTitle>
+                </div>
+                <CardContent className="p-8 space-y-10">
+                  <div className="relative pl-8 border-l-2 border-slate-100 dark:border-slate-800 space-y-10">
+                    <div className="relative">
+                      <div className="absolute -left-[41px] top-0 w-4 h-4 rounded-full bg-emerald-500 border-4 border-white dark:border-slate-900 shadow-sm z-10" />
+                      <div className="space-y-2">
+                        <div className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest">GATE IN (MASUK)</div>
+                        <div className="flex items-center gap-6">
+                           <div className="space-y-0.5">
+                             <div className="text-xs text-slate-400 font-bold uppercase">Tanggal</div>
+                             <div className="font-bold text-slate-900 dark:text-slate-50">{formatDate(document.tgl_gate_in)}</div>
+                           </div>
+                           <div className="space-y-0.5">
+                             <div className="text-xs text-slate-400 font-bold uppercase">Pukul</div>
+                             <div className="font-bold text-slate-900 dark:text-slate-50">{document.jam_gate_in || '-'}</div>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <div className="absolute -left-[41px] top-0 w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-700 border-4 border-white dark:border-slate-900 shadow-sm z-10" />
+                      <div className="space-y-2">
+                        <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">GATE OUT (KELUAR)</div>
+                        <div className="flex items-center gap-6">
+                           <div className="space-y-0.5">
+                             <div className="text-xs text-slate-400 font-bold uppercase">Tanggal</div>
+                             <div className="font-bold text-slate-900 dark:text-slate-50">{formatDate(document.tgl_gate_out)}</div>
+                           </div>
+                           <div className="space-y-0.5">
+                             <div className="text-xs text-slate-400 font-bold uppercase">Pukul</div>
+                             <div className="font-bold text-slate-900 dark:text-slate-50">{document.jam_gate_out || '-'}</div>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
       </div>
     </AppLayout>
   )

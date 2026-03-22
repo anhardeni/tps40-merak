@@ -21,7 +21,8 @@ import {
   XCircle,
   Clock,
   FileJson,
-  Calendar
+  Calendar,
+  X
 } from "lucide-react"
 
 interface Document {
@@ -51,64 +52,29 @@ interface IndexDocumentProps extends PageProps {
     kd_tps?: string
     date_from?: string
     date_to?: string
-    tgl_tiba_from?: string
-    tgl_tiba_to?: string
   }
 }
 
-const statusConfig: Record<string, { label: string; variant: any; icon: any }> = {
-  draft: { label: 'Draft', variant: 'secondary' as const, icon: Clock },
-  DRAFT: { label: 'Draft', variant: 'secondary' as const, icon: Clock },
-  submitted: { label: 'Disubmit', variant: 'default' as const, icon: Send },
-  approved: { label: 'Disetujui', variant: 'success' as const, icon: CheckCircle },
-  rejected: { label: 'Ditolak', variant: 'destructive' as const, icon: XCircle },
-  completed: { label: 'Selesai', variant: 'success' as const, icon: CheckCircle }
-}
-
-// Helper function to get status config with fallback
-const getStatusConfig = (status: string) => {
-  return statusConfig[status] || statusConfig[status?.toLowerCase()] || statusConfig.draft
-}
-
-// Helper function to format date as YYYY-MM-DD
-const formatDateForInput = (date: Date): string => {
-  return date.toISOString().split('T')[0]
-}
-
-// Get default date range (6 months ago to today)
-const getDefaultDateFrom = (): string => {
-  const date = new Date()
-  date.setMonth(date.getMonth() - 6)
-  return formatDateForInput(date)
-}
-
-const getDefaultDateTo = (): string => {
-  return formatDateForInput(new Date())
-}
-
-// Get default arrival date range (90 days ago to today)
-const getDefaultTglTibaFrom = (): string => {
-  const date = new Date()
-  date.setDate(date.getDate() - 90)
-  return formatDateForInput(date)
+const statusConfig: Record<string, { label: string; variant: 'secondary' | 'default' | 'success' | 'destructive'; icon: any }> = {
+  draft: { label: 'Draft', variant: 'secondary', icon: Clock },
+  submitted: { label: 'Disubmit', variant: 'default', icon: Send },
+  approved: { label: 'Disetujui', variant: 'success', icon: CheckCircle },
+  rejected: { label: 'Ditolak', variant: 'destructive', icon: XCircle },
+  completed: { label: 'Selesai', variant: 'success', icon: CheckCircle }
 }
 
 export default function IndexDocument({ auth, documents, filters }: IndexDocumentProps) {
   const [search, setSearch] = useState(filters.search || '')
   const [status, setStatus] = useState(filters.status || '')
-  const [dateFrom, setDateFrom] = useState(filters.date_from || getDefaultDateFrom())
-  const [dateTo, setDateTo] = useState(filters.date_to || getDefaultDateTo())
-  const [tglTibaFrom, setTglTibaFrom] = useState(filters.tgl_tiba_from || getDefaultTglTibaFrom())
-  const [tglTibaTo, setTglTibaTo] = useState(filters.tgl_tiba_to || getDefaultDateTo())
+  const [dateFrom, setDateFrom] = useState(filters.date_from || '')
+  const [dateTo, setDateTo] = useState(filters.date_to || '')
 
   const handleSearch = () => {
-    router.get('/documents', {
+    router.get('/documents', { 
       search: search || undefined,
       status: status || undefined,
       date_from: dateFrom || undefined,
       date_to: dateTo || undefined,
-      tgl_tiba_from: tglTibaFrom || undefined,
-      tgl_tiba_to: tglTibaTo || undefined
     }, {
       preserveState: true,
       replace: true
@@ -120,8 +86,6 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
     setStatus('')
     setDateFrom('')
     setDateTo('')
-    setTglTibaFrom('')
-    setTglTibaTo('')
     router.get('/documents', {}, {
       preserveState: true,
       replace: true
@@ -172,34 +136,39 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
           </Button>
         </div>
 
-        {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Filter & Pencarian
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="search">Pencarian</Label>
-                <Input
-                  id="search"
-                  placeholder="Cari ref number, kode dokumen..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                />
+        {/* Unified Soft-Premium Filter Box */}
+        <Card className="border-none shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+          <div className="h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 w-full" />
+          <CardContent className="p-6 md:p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 items-end">
+              
+              {/* Search Field - Takes 4/12 */}
+              <div className="lg:col-span-4 space-y-2.5">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                  <Label htmlFor="search" className="text-[11px] font-black uppercase text-slate-400 tracking-widest">Pencarian Cepat</Label>
+                </div>
+                <div className="relative group/search">
+                  <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400 group-focus-within/search:text-indigo-500 transition-colors" />
+                  <Input
+                    id="search"
+                    placeholder="Ref No, Kode Dok, atau angkutan..."
+                    className="pl-11 h-12 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all text-sm font-medium shadow-inner"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
+              {/* Status Field - Takes 2/12 */}
+              <div className="lg:col-span-2 space-y-2.5">
+                <Label htmlFor="status" className="text-[11px] font-black uppercase text-slate-400 tracking-widest ml-1">Status</Label>
                 <select
                   id="status"
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950"
+                  className="flex h-12 w-full rounded-2xl border-none bg-slate-50 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all font-bold text-slate-600 shadow-inner appearance-none cursor-pointer"
                 >
                   <option value="">Semua Status</option>
                   <option value="draft">Draft</option>
@@ -209,63 +178,46 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                 </select>
               </div>
 
-              {/* Special Colorful Date Filter Box */}
-
-
-              {/* Special Colorful Arrival Date Filter Box */}
-              <div className="lg:col-span-2 rounded-xl p-4 bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-sky-950/40 border border-emerald-200/50 dark:border-emerald-700/30 shadow-sm relative overflow-hidden">
-                {/* Decorative gradient glow */}
-                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-sky-500/5 pointer-events-none" />
-
-                {/* Header badge */}
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 text-white text-xs font-medium shadow-sm">
-                    <Calendar className="w-3 h-3" />
-                    Rentang Tgl Tiba
-                  </div>
-                  <div className="flex-1 h-px bg-gradient-to-r from-emerald-300/50 via-teal-300/30 to-transparent dark:from-emerald-600/30 dark:via-teal-600/20" />
+              {/* Date Box - Unified Section - Takes 4/12 */}
+              <div className="lg:col-span-4 grid grid-cols-2 gap-3 bg-indigo-50/50 dark:bg-indigo-900/10 p-3 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-indigo-400 tracking-tighter ml-1">Dari Tgl</Label>
+                  <Input 
+                    type="date" 
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-9 rounded-xl border-none bg-white/80 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs font-bold"
+                  />
                 </div>
-
-                <div className="grid grid-cols-2 gap-3 relative">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="tglTibaFrom" className="text-xs font-medium text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      Dari
-                    </Label>
-                    <Input
-                      id="tglTibaFrom"
-                      type="date"
-                      value={tglTibaFrom}
-                      onChange={(e) => setTglTibaFrom(e.target.value)}
-                      className="w-full bg-white/80 dark:bg-slate-900/80 border-emerald-200 dark:border-emerald-700/50 focus:border-emerald-400 focus:ring-emerald-400/20"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="tglTibaTo" className="text-xs font-medium text-sky-700 dark:text-sky-300 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      Sampai
-                    </Label>
-                    <Input
-                      id="tglTibaTo"
-                      type="date"
-                      value={tglTibaTo}
-                      onChange={(e) => setTglTibaTo(e.target.value)}
-                      className="w-full bg-white/80 dark:bg-slate-900/80 border-sky-200 dark:border-sky-700/50 focus:border-sky-400 focus:ring-sky-400/20"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-indigo-400 tracking-tighter ml-1">Sampai Tgl</Label>
+                  <Input 
+                    type="date" 
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-9 rounded-xl border-none bg-white/80 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs font-bold"
+                  />
                 </div>
               </div>
-            </div>
 
-            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto" onClick={handleReset}>
-                Reset Filter
-              </Button>
-              <Button size="lg" className="w-full sm:w-auto" onClick={handleSearch}>
-                <Search className="w-5 h-5 mr-2" />
-                Cari Dokumen
-              </Button>
+              {/* Actions - Takes 2/12 */}
+              <div className="lg:col-span-2 flex gap-2">
+                <Button 
+                    variant="ghost" 
+                    onClick={handleReset} 
+                    className="h-12 w-12 rounded-2xl hover:bg-rose-50 hover:text-rose-500 shrink-0 border border-slate-100 dark:border-slate-800 transition-colors"
+                    title="Reset Filter"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+                <Button 
+                    onClick={handleSearch} 
+                    className="h-12 flex-1 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  FILTER
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -279,8 +231,8 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
             {documents.data.length === 0 ? (
               <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                 <p>Tidak ada dokumen ditemukan</p>
-                <Button
-                  variant="outline"
+                <Button 
+                  variant="outline" 
                   className="mt-4"
                   onClick={() => router.get('/documents/create')}
                 >
@@ -308,8 +260,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                       </thead>
                       <tbody>
                         {documents.data.map((document) => {
-                          const config = getStatusConfig(document.status)
-                          const StatusIcon = config.icon
+                          const StatusIcon = statusConfig[document.status.toLowerCase()]?.icon || Clock
                           return (
                             <tr key={document.id} className="border-b hover:bg-slate-50 dark:hover:bg-slate-900">
                               <td className="p-4">
@@ -324,7 +275,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                               <td className="p-4">
                                 <Badge variant="outline">{document.kd_tps}</Badge>
                               </td>
-                              <td className="p-4">
+                              <td className="p-4 max-w-32 truncate">
                                 {document.nm_angkut?.nm_angkut || '-'}
                               </td>
                               <td className="p-4">{document.no_voy_flight || '-'}</td>
@@ -333,12 +284,12 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                                 <Badge variant="secondary">{document.tangki_count}</Badge>
                               </td>
                               <td className="p-4">
-                                <Badge
-                                  variant={config.variant}
+                                <Badge 
+                                  variant={statusConfig[document.status.toLowerCase()]?.variant || 'secondary'}
                                   className="flex items-center gap-1 w-fit"
                                 >
                                   <StatusIcon className="w-3 h-3" />
-                                  {config.label}
+                                  {statusConfig[document.status.toLowerCase()]?.label || document.status}
                                 </Badge>
                               </td>
                               <td className="p-4">
@@ -351,7 +302,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                                   >
                                     <Eye className="w-4 h-4" />
                                   </Button>
-
+                                  
                                   {document.status === 'draft' && (
                                     <>
                                       <Button
@@ -362,7 +313,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                                       >
                                         <Edit className="w-4 h-4" />
                                       </Button>
-
+                                      
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -371,7 +322,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                                       >
                                         <Send className="w-4 h-4" />
                                       </Button>
-
+                                      
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -383,7 +334,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                                       </Button>
                                     </>
                                   )}
-
+                                  
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -394,19 +345,19 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                                   </Button>
 
                                   {(auth.user.roles?.some((role) => role.name === 'admin') ||
-                                    auth.user.roles?.some((role) =>
+                                    auth.user.roles?.some((role) => 
                                       role.permissions?.some((perm) => perm.name === 'export.json')
                                     )
                                   ) && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
-                                        title="Preview JSON"
-                                      >
-                                        <FileJson className="w-4 h-4" />
-                                      </Button>
-                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
+                                      title="Preview JSON"
+                                    >
+                                      <FileJson className="w-4 h-4" />
+                                    </Button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -420,8 +371,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                 {/* Mobile view */}
                 <div className="lg:hidden space-y-4">
                   {documents.data.map((document) => {
-                    const config = getStatusConfig(document.status)
-                    const StatusIcon = config.icon
+                    const StatusIcon = statusConfig[document.status.toLowerCase()]?.icon || Clock
                     return (
                       <Card key={document.id} className="p-4">
                         <div className="flex items-start justify-between mb-3">
@@ -431,15 +381,15 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                               {formatDateTime(document.created_at)}
                             </div>
                           </div>
-                          <Badge
-                            variant={config.variant}
+                          <Badge 
+                            variant={statusConfig[document.status.toLowerCase()]?.variant || 'secondary'}
                             className="flex items-center gap-1"
                           >
                             <StatusIcon className="w-3 h-3" />
-                            {config.label}
+                            {statusConfig[document.status.toLowerCase()]?.label || document.status}
                           </Badge>
                         </div>
-
+                        
                         <div className="grid grid-cols-2 gap-2 text-sm mb-3">
                           <div>
                             <span className="text-slate-500">Kode Dok:</span>
@@ -458,7 +408,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                             <span className="ml-1">{formatDate(document.tgl_entry)}</span>
                           </div>
                         </div>
-
+                        
                         <div className="flex items-center gap-2 pt-2 border-t">
                           <Button
                             variant="outline"
@@ -468,7 +418,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                             <Eye className="w-4 h-4 mr-1" />
                             Detail
                           </Button>
-
+                          
                           {document.status === 'draft' && (
                             <Button
                               variant="outline"
@@ -479,7 +429,7 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                               Edit
                             </Button>
                           )}
-
+                          
                           <Button
                             variant="outline"
                             size="sm"
@@ -489,19 +439,19 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                           </Button>
 
                           {(auth.user.roles?.some((role) => role.name === 'admin') ||
-                            auth.user.roles?.some((role) =>
+                            auth.user.roles?.some((role) => 
                               role.permissions?.some((perm) => perm.name === 'export.json')
                             )
                           ) && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
-                                title="Preview JSON"
-                              >
-                                <FileJson className="w-4 h-4" />
-                              </Button>
-                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
+                              title="Preview JSON"
+                            >
+                              <FileJson className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </Card>
                     )

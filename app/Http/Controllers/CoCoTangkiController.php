@@ -41,10 +41,7 @@ class CoCoTangkiController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('ref_number', 'like', "%{$search}%")
                     ->orWhere('kd_dok', 'like', "%{$search}%")
-                    ->orWhere('no_voy_flight', 'like', "%{$search}%")
-                    ->orWhereHas('nmAngkut', function ($q) use ($search) {
-                        $q->where('nm_angkut', 'like', "%{$search}%");
-                    });
+                    ->orWhere('nm_angkut', 'like', "%{$search}%");
             });
         }
 
