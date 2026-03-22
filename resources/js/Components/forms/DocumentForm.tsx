@@ -23,9 +23,9 @@ const documentSchema = z.object({
   kd_tps: z.string().min(1, 'Kode TPS wajib diisi'),
   nm_angkut_id: z.string().min(1, 'Nama angkutan wajib dipilih'),
   kd_gudang: z.string().min(1, 'Kode gudang wajib diisi'),
-  no_voy_flight: z.string().optional(),
+  no_voy_flight: z.string().min(1, 'No. Voy/Flight wajib diisi'),
   tgl_entry: z.string().min(1, 'Tanggal entry wajib diisi'),
-  tgl_tiba: z.string().optional(),
+  tgl_tiba: z.string().min(1, 'Tanggal tiba wajib diisi'),
   jam_entry: z.string().min(1, 'Jam entry wajib diisi'),
   tgl_gate_in: z.string().optional(),
   jam_gate_in: z.string().optional(),
@@ -91,7 +91,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
   const [activeTab, setActiveTab] = useState<'header' | 'tangki' | 'waktu'>('header')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  
+
   // Detect flow type from document data or default to IN
   const [flowType, setFlowType] = useState<'IN' | 'OUT'>(
     document?.tangki?.[0]?.kd_dok_inout === 'OUT' ? 'OUT' : 'IN'
@@ -192,7 +192,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
     }
   }
 
-  const filteredKdDok = referenceData.kdDok.filter(d => 
+  const filteredKdDok = referenceData.kdDok.filter(d =>
     flowType === 'IN' ? DOK_IN_CODES.includes(d.kd_dok) : DOK_OUT_CODES.includes(d.kd_dok)
   )
 
@@ -250,64 +250,61 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
         {/* Compact Flow Selection - iPhone 17 Style */}
         <div className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl flex items-center shadow-inner border border-slate-200 dark:border-slate-800 min-w-[320px]">
-            <button
-                type="button"
-                onClick={() => setFlowType('IN')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-300 font-black text-[11px] tracking-widest ${
-                flowType === 'IN' 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' 
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-            >
-                <LogIn className={`w-4 h-4 ${flowType === 'IN' ? 'animate-pulse' : ''}`} />
-                GATE IN
-            </button>
-            <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1" />
-            <button
-                type="button"
-                onClick={() => setFlowType('OUT')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-300 font-black text-[11px] tracking-widest ${
-                flowType === 'OUT' 
-                    ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' 
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
-            >
-                GATE OUT
-                <LogOut className={`w-4 h-4 ${flowType === 'OUT' ? 'animate-pulse' : ''}`} />
-            </button>
+          <button
+            type="button"
+            onClick={() => setFlowType('IN')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-300 font-black text-[11px] tracking-widest ${flowType === 'IN'
+              ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+              : 'text-slate-400 hover:text-slate-600'
+              }`}
+          >
+            <LogIn className={`w-4 h-4 ${flowType === 'IN' ? 'animate-pulse' : ''}`} />
+            GATE IN
+          </button>
+          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1" />
+          <button
+            type="button"
+            onClick={() => setFlowType('OUT')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-300 font-black text-[11px] tracking-widest ${flowType === 'OUT'
+              ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
+              : 'text-slate-400 hover:text-slate-600'
+              }`}
+          >
+            GATE OUT
+            <LogOut className={`w-4 h-4 ${flowType === 'OUT' ? 'animate-pulse' : ''}`} />
+          </button>
         </div>
       </div>
-        <div className="flex flex-wrap gap-2">
-          {document && (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => window.open(`/api/export/documents/${document.id}/preview/xml`, '_blank')}
-                className="shadow-sm hover:shadow-md transition-shadow"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Preview XML
-              </Button>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
-                className="shadow-sm hover:shadow-md transition-shadow"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Preview JSON
-              </Button>
-            </div>
-          )}
-        </div>
+      <div className="flex flex-wrap gap-2">
+        {document && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => window.open(`/api/export/documents/${document.id}/preview/xml`, '_blank')}
+              className="shadow-sm hover:shadow-md transition-shadow"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Preview XML
+            </Button>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
+              className="shadow-sm hover:shadow-md transition-shadow"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Preview JSON
+            </Button>
+          </div>
+        )}
+      </div>
 
       {message && (
-        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm border ${
-          message.type === 'success' 
-            ? "bg-emerald-50 text-emerald-800 border-emerald-200" 
-            : "bg-rose-50 text-rose-800 border-rose-200"
-        }`}>
+        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm border ${message.type === 'success'
+          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+          : "bg-rose-50 text-rose-800 border-rose-200"
+          }`}>
           {message.type === 'success' ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
           <span className="text-sm font-semibold">{message.text}</span>
         </div>
@@ -320,11 +317,10 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
         <button
           type="button"
           onClick={() => setActiveTab('header')}
-          className={`flex-1 flex items-center justify-center py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
-            activeTab === 'header' 
-              ? `bg-white dark:bg-slate-800 ${flowType === 'IN' ? 'text-blue-600' : 'text-amber-600'} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700` 
-              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
-          }`}
+          className={`flex-1 flex items-center justify-center py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'header'
+            ? `bg-white dark:bg-slate-800 ${flowType === 'IN' ? 'text-blue-600' : 'text-amber-600'} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
+            : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
+            }`}
         >
           <Info className="w-4 h-4 mr-2" />
           Informasi Header
@@ -332,11 +328,10 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
         <button
           type="button"
           onClick={() => setActiveTab('tangki')}
-          className={`flex-1 flex items-center justify-center py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
-            activeTab === 'tangki' 
-              ? `bg-white dark:bg-slate-800 ${flowType === 'IN' ? 'text-blue-600' : 'text-amber-600'} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700` 
-              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
-          }`}
+          className={`flex-1 flex items-center justify-center py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'tangki'
+            ? `bg-white dark:bg-slate-800 ${flowType === 'IN' ? 'text-blue-600' : 'text-amber-600'} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
+            : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
+            }`}
         >
           <Package className="w-4 h-4 mr-2" />
           Daftar Tangki ({fields.length})
@@ -344,11 +339,10 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
         <button
           type="button"
           onClick={() => setActiveTab('waktu')}
-          className={`flex-1 flex items-center justify-center py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
-            activeTab === 'waktu' 
-              ? `bg-white dark:bg-slate-800 ${flowType === 'IN' ? 'text-blue-600' : 'text-amber-600'} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700` 
-              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
-          }`}
+          className={`flex-1 flex items-center justify-center py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'waktu'
+            ? `bg-white dark:bg-slate-800 ${flowType === 'IN' ? 'text-blue-600' : 'text-amber-600'} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
+            : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
+            }`}
         >
           <Clock className="w-4 h-4 mr-2" />
           Pencatatan Waktu
@@ -358,10 +352,10 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
         {activeTab === 'header' && (
           <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Card className="border-slate-200 shadow-sm overflow-hidden">
+            <Card className={`border-slate-200 shadow-sm overflow-hidden border-l-4 ${flowType === 'IN' ? 'border-l-blue-500' : 'border-l-amber-500'}`}>
               <div className="bg-slate-50 dark:bg-slate-900 border-b p-4">
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Info className="w-5 h-5 text-blue-500" /> General Document Information
+                  <Info className={`w-5 h-5 ${flowType === 'IN' ? 'text-blue-500' : 'text-amber-500'}`} /> General Document Information
                 </CardTitle>
               </div>
               <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -426,15 +420,32 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   {errors.kd_gudang && <p className="text-xs text-rose-500">{errors.kd_gudang.message}</p>}
                 </div>
                 <div className="space-y-2">
+                  <Label className="text-sm font-semibold italic text-slate-500">Call Sign</Label>
+                  <div className="h-10 px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-400 font-mono">
+                    {(() => {
+                      const selectedId = watch('nm_angkut_id');
+                      const selectedAngkut = referenceData.nmAngkut.find(item => item.id.toString() === selectedId);
+                      return selectedAngkut?.call_sign || '-';
+                    })()}
+                  </div>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="no_voy_flight" className="text-sm font-semibold">No. VOY/Flight</Label>
                   <Input {...register('no_voy_flight')} placeholder="EX: VOY-123" className="rounded-lg shadow-sm" />
                 </div>
-                <div className="col-span-full space-y-2">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Tanggal Tiba (Estimasi)</Label>
+                  <div className="flex gap-2">
+                    <Input type="date" {...register('tgl_tiba')} className={`rounded-lg flex-1 ${ringClass}`} />
+                    <Button type="button" size="icon" variant="outline" onClick={() => setCurrentTime('tgl_tiba')} className="shrink-0"><Calendar className="w-4 h-4" /></Button>
+                  </div>
+                </div>
+                <div className="md:col-span-2 space-y-2">
                   <Label htmlFor="keterangan" className="text-sm font-semibold">Keterangan Dokumen</Label>
-                  <Textarea 
-                    {...register('keterangan')} 
-                    placeholder="Masukkan keterangan detail mengenai pengiriman ini..." 
-                    rows={4} 
+                  <Textarea
+                    {...register('keterangan')}
+                    placeholder="Masukkan keterangan detail mengenai pengiriman ini..."
+                    rows={2}
                     className="rounded-lg shadow-sm"
                   />
                 </div>
@@ -449,7 +460,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                 <Package className="w-5 h-5 text-indigo-400" />
                 <span className="text-[11px] font-black tracking-widest uppercase ml-2">Kontrol Data Tangki</span>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -460,7 +471,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   <Download className="w-4 h-4 mr-2" />
                   Template
                 </Button>
-                
+
                 <Button
                   type="button"
                   className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider px-6 transition-all active:scale-95"
@@ -472,10 +483,10 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
                 <div className="w-px h-6 bg-slate-800 mx-1" />
 
-                <Button 
-                    type="button" 
-                    onClick={addTangki} 
-                    className={`h-10 rounded-xl ${flowType === 'IN' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-amber-500 hover:bg-amber-600'} text-white text-[10px] font-black uppercase tracking-wider px-6 transition-all active:scale-95 shadow-lg ${flowType === 'IN' ? 'shadow-blue-500/20' : 'shadow-amber-500/20'}`}
+                <Button
+                  type="button"
+                  onClick={addTangki}
+                  className={`h-10 rounded-xl ${flowType === 'IN' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-amber-500 hover:bg-amber-600'} text-white text-[10px] font-black uppercase tracking-wider px-6 transition-all active:scale-95 shadow-lg ${flowType === 'IN' ? 'shadow-blue-500/20' : 'shadow-amber-500/20'}`}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Tambah Baris
@@ -523,20 +534,20 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
             </div>
             <div className="space-y-4">
               {fields.map((field: any, index: number) => (
-                <Card key={field.id} className="overflow-hidden border-slate-200 shadow-sm group hover:border-blue-300 transition-all duration-300">
+                <Card key={field.id} className={`border-slate-200 shadow-sm overflow-hidden border-l-4 ${flowType === 'IN' ? 'border-l-blue-500' : 'border-l-amber-500'}`}>
                   <div className="bg-slate-50 dark:bg-slate-900 border-b px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 flex items-center justify-center font-bold text-xs ring-2 ring-white dark:ring-slate-800">
+                      <div className={`w-8 h-8 rounded-full ${flowType === 'IN' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'} flex items-center justify-center font-bold text-xs ring-2 ring-white dark:ring-slate-800 transition-colors duration-300 shadow-sm`}>
                         {index + 1}
                       </div>
                       <span className="text-sm font-bold tracking-wide">TANGKI DETAIL</span>
                     </div>
                     {fields.length > 1 && (
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all rounded-full p-2 h-auto" 
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all rounded-full p-2 h-auto"
                         onClick={() => remove(index)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -544,31 +555,19 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     )}
                   </div>
                   <CardContent className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                    {/* Basic Info */}
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">No. Tangki *</Label>
                       <Input {...register(`tangki.${index}.no_tangki` as const)} className="rounded-lg bg-slate-50/50 focus:bg-white" />
                       {errors.tangki?.[index]?.no_tangki && <p className="text-[11px] text-rose-500 font-medium">{errors.tangki[index].no_tangki.message}</p>}
                     </div>
                     <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Seri Out (Lalin)</Label>
+                      <Input type="number" {...register(`tangki.${index}.seri_out` as const)} className="rounded-lg" />
+                    </div>
+                    <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">Jenis Isi *</Label>
                       <Input {...register(`tangki.${index}.jenis_isi` as const)} className="rounded-lg bg-slate-50/50 focus:bg-white" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Kapasitas</Label>
-                      <Input type="number" step="0.001" {...register(`tangki.${index}.kapasitas` as const, { setValueAs: (v) => v === '' ? 0 : parseFloat(v) })} className="rounded-lg shadow-inner" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Jumlah Isi</Label>
-                      <Input type="number" step="0.001" {...register(`tangki.${index}.jumlah_isi` as const, { setValueAs: (v) => v === '' ? 0 : parseFloat(v) })} className="rounded-lg shadow-inner" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Satuan</Label>
-                      <select {...register(`tangki.${index}.satuan` as const)} className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 transition-all">
-                        <option value="LITER">LITER</option>
-                        <option value="KGM">KGM</option>
-                        <option value="M3">M3</option>
-                        <option value="TON">TON</option>
-                      </select>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">Kondisi</Label>
@@ -578,17 +577,86 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                         <option value="BOCOR">BOCOR</option>
                       </select>
                     </div>
+
+                    {/* Capacity Row */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Kapasitas</Label>
+                      <Input type="number" step="0.001" {...register(`tangki.${index}.kapasitas` as const, { setValueAs: (v) => v === '' ? 0 : parseFloat(v) })} className="rounded-lg shadow-inner" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Jumlah Isi</Label>
+                      <Input type="number" step="0.001" {...register(`tangki.${index}.jumlah_isi` as const, { setValueAs: (v) => v === '' ? 0 : parseFloat(v) })} className="rounded-lg shadow-inner" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Satuan Utama</Label>
+                      <select {...register(`tangki.${index}.satuan` as const)} className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 transition-all">
+                        <option value="LITER">LITER</option>
+                        <option value="KGM">KGM</option>
+                        <option value="M3">M3</option>
+                        <option value="TON">TON</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400">Jml Satuan</Label>
+                        <Input type="number" step="0.001" {...register(`tangki.${index}.jml_satuan` as const)} className="h-8 text-xs" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400">Jenis Sat</Label>
+                        <Input {...register(`tangki.${index}.jns_satuan` as const)} className="h-8 text-xs" placeholder="BOX/DRM" />
+                      </div>
+                    </div>
+
+                    {/* Shipments & Customs */}
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">No. BL/AWB</Label>
                       <Input {...register(`tangki.${index}.no_bl_awb` as const)} className={`rounded-lg ${ringClass}`} />
                     </div>
                     <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Tgl. BL/AWB</Label>
+                      <Input type="date" {...register(`tangki.${index}.tgl_bl_awb` as const)} className={`rounded-lg ${ringClass}`} />
+                    </div>
+                    <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">No. BC11</Label>
                       <Input {...register(`tangki.${index}.no_bc11` as const)} className={`rounded-lg ${ringClass}`} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400">Tgl BC11</Label>
+                        <Input type="date" {...register(`tangki.${index}.tgl_bc11` as const)} className="h-8 text-xs" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400">Pos BC11</Label>
+                        <Input {...register(`tangki.${index}.no_pos_bc11` as const)} className="h-8 text-xs" />
+                      </div>
+                    </div>
+
+                    {/* Consignee */}
+                    <div className="space-y-2 lg:col-span-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Consignee (Penerima)</Label>
+                      <Input {...register(`tangki.${index}.consignee` as const)} className="rounded-lg" placeholder="NAMA PERUSAHAAN" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">ID Consignee</Label>
+                      <Input {...register(`tangki.${index}.id_consignee` as const)} className="rounded-lg" placeholder="NPWP/ID" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">No. Polisi (Truck)</Label>
                       <Input {...register(`tangki.${index}.no_pol` as const)} className={`rounded-lg ${ringClass}`} placeholder="EX: B 1234 ABC" />
+                    </div>
+
+                    {/* Documents In/Out */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Kd. Dok Lalin</Label>
+                      <Input {...register(`tangki.${index}.kd_dok_inout` as const)} readOnly className="bg-slate-50 font-bold" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">No. Dok Lalin</Label>
+                      <Input {...register(`tangki.${index}.no_dok_inout` as const)} className="rounded-lg" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Tgl. Dok Lalin</Label>
+                      <Input type="date" {...register(`tangki.${index}.tgl_dok_inout` as const)} className="rounded-lg" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">Sarana Angkut</Label>
@@ -596,7 +664,83 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                         <option value="LAND">DARAT (TRUK)</option>
                         <option value="SEA">LAUT (KAPAL)</option>
                         <option value="PIPE">PIPA</option>
+                        <option value="AIR">UDARA (PESAWAT)</option>
+                        <option value="RAIL">KERETA API</option>
+                        <option value="MULTIMODA">MULTIMODA</option>
+                        <option value="OTHER">LAINNYA</option>
                       </select>
+                    </div>
+
+                    {/* Ports */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Pel. Muat</Label>
+                      <Input {...register(`tangki.${index}.pel_muat` as const)} className="rounded-lg" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Pel. Transit</Label>
+                      <Input {...register(`tangki.${index}.pel_transit` as const)} className="rounded-lg" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Pel. Bongkar</Label>
+                      <Input {...register(`tangki.${index}.pel_bongkar` as const)} className="rounded-lg" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Wkt. In/Out</Label>
+                      <Input type="datetime-local" {...register(`tangki.${index}.wk_inout` as const)} className="rounded-lg" />
+                    </div>
+
+                    {/* Dimensions & Weight */}
+                    <div className="grid grid-cols-3 gap-2 lg:col-span-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400">Pjg (m)</Label>
+                        <Input type="number" step="0.01" {...register(`tangki.${index}.panjang` as const)} className="h-8 text-xs" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400">Lbr (m)</Label>
+                        <Input type="number" step="0.01" {...register(`tangki.${index}.lebar` as const)} className="h-8 text-xs" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400">Tgi (m)</Label>
+                        <Input type="number" step="0.01" {...register(`tangki.${index}.tinggi` as const)} className="h-8 text-xs" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 lg:col-span-2">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400">Berat Kosong (kg)</Label>
+                        <Input type="number" step="0.01" {...register(`tangki.${index}.berat_kosong` as const)} className="h-8 text-xs" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase text-slate-400">Berat Isi (kg)</Label>
+                        <Input type="number" step="0.01" {...register(`tangki.${index}.berat_isi` as const)} className="h-8 text-xs" />
+                      </div>
+                    </div>
+
+                    {/* Production & Expiration */}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Tgl. Produksi</Label>
+                      <Input type="date" {...register(`tangki.${index}.tgl_produksi` as const)} className="rounded-lg" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Tgl. Expired</Label>
+                      <Input type="date" {...register(`tangki.${index}.tgl_expired` as const)} className="rounded-lg" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Segel Beacukai</Label>
+                      <Input {...register(`tangki.${index}.no_segel_bc` as const)} className="rounded-lg" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Segel Prshn</Label>
+                      <Input {...register(`tangki.${index}.no_segel_perusahaan` as const)} className="rounded-lg" />
+                    </div>
+
+                    {/* Location & Links */}
+                    <div className="space-y-2 lg:col-span-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Lokasi Penempatan</Label>
+                      <Input {...register(`tangki.${index}.lokasi_penempatan` as const)} className="rounded-lg" placeholder="KODE AREA / BLOK" />
+                    </div>
+                    <div className="space-y-2 lg:col-span-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500">Keterangan Tambahan</Label>
+                      <Input {...register(`tangki.${index}.keterangan` as const)} className="rounded-lg" />
                     </div>
                   </CardContent>
                 </Card>
@@ -612,13 +756,13 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   <div className="flex items-center gap-2">
                     <Clock className="w-5 h-5" /> Entry & Kedatangan
                   </div>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
-                        setCurrentTime('tgl_entry'); 
-                        setCurrentTime('jam_entry');
+                      setCurrentTime('tgl_entry');
+                      setCurrentTime('jam_entry');
                     }}
                     className="text-[10px] uppercase font-bold tracking-tighter"
                   >
@@ -637,13 +781,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     <Input type="time" {...register('jam_entry')} className={`rounded-lg ${ringClass}`} />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Tanggal Tiba (Estimasi)</Label>
-                  <div className="flex gap-2">
-                    <Input type="date" {...register('tgl_tiba')} className={`rounded-lg flex-1 ${ringClass}`} />
-                    <Button type="button" size="icon" variant="outline" onClick={() => setCurrentTime('tgl_tiba')} className="shrink-0"><Calendar className="w-4 h-4" /></Button>
-                  </div>
-                </div>
+
               </CardContent>
             </Card>
 
@@ -657,17 +795,17 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                 {flowType === 'IN' ? (
                   <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="flex items-center justify-between border-b pb-2">
-                        <div className="flex items-center gap-2 text-blue-500 text-xs font-bold uppercase tracking-widest">GATE IN</div>
-                        <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => {
-                                setCurrentTime('tgl_gate_in'); 
-                                setCurrentTime('jam_gate_in');
-                            }}
-                            className="text-[10px] uppercase font-bold"
-                        >Set Now</Button>
+                      <div className="flex items-center gap-2 text-blue-500 text-xs font-bold uppercase tracking-widest">GATE IN</div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setCurrentTime('tgl_gate_in');
+                          setCurrentTime('jam_gate_in');
+                        }}
+                        className="text-[10px] uppercase font-bold"
+                      >Set Now</Button>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
@@ -683,17 +821,17 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                 ) : (
                   <div className="space-y-4 animate-in fade-in slide-in-from-left-4 duration-300">
                     <div className="flex items-center justify-between border-b pb-2">
-                        <div className="flex items-center gap-2 text-amber-500 text-xs font-bold uppercase tracking-widest">GATE OUT</div>
-                        <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => {
-                                setCurrentTime('tgl_gate_out'); 
-                                setCurrentTime('jam_gate_out');
-                            }}
-                            className="text-[10px] uppercase font-bold"
-                        >Set Now</Button>
+                      <div className="flex items-center gap-2 text-amber-500 text-xs font-bold uppercase tracking-widest">GATE OUT</div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setCurrentTime('tgl_gate_out');
+                          setCurrentTime('jam_gate_out');
+                        }}
+                        className="text-[10px] uppercase font-bold"
+                      >Set Now</Button>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">

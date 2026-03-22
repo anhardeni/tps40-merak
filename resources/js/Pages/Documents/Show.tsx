@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card"
 import { Badge } from "@/Components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select"
 import { PageProps } from '@/types'
-import { 
+import {
   Edit,
   Download,
   Send,
@@ -58,6 +58,9 @@ interface Document {
     no_pol?: string
     jenis_isi: string
     jenis_kemasan?: string
+    jml_satuan?: number
+    jns_satuan?: string
+    kd_sar_angkut_inout?: string
     kapasitas: number
     jumlah_isi: number
     satuan: string
@@ -155,20 +158,20 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
         {/* Modern Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all duration-300">
           <div className="flex items-start gap-4">
-            <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => router.get('/documents')}
-                className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 shrink-0"
-              >
-                <ArrowLeft className="w-5 h-5" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.get('/documents')}
+              className="rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 shrink-0"
+            >
+              <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight dark:text-slate-50">
                   {document.ref_number}
                 </h1>
-                <Badge 
+                <Badge
                   variant={statusConfig[document.status.toLowerCase()]?.variant || 'secondary'}
                   className="px-3 py-1 rounded-full flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider shadow-sm ring-1 ring-white/20"
                 >
@@ -177,8 +180,8 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                 </Badge>
               </div>
               <p className="text-slate-500 mt-2 flex items-center gap-2 text-sm font-medium">
-                 <Clock className="w-4 h-4 text-slate-400" />
-                 Dibuat pada {formatDateTime(document.created_at)}
+                <Clock className="w-4 h-4 text-slate-400" />
+                Dibuat pada {formatDateTime(document.created_at)}
               </p>
             </div>
           </div>
@@ -194,7 +197,7 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Data
                 </Button>
-                
+
                 <Button
                   onClick={handleSubmit}
                   className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white shadow-md shadow-slate-900/10 px-6"
@@ -204,7 +207,7 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                 </Button>
               </div>
             )}
-            
+
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
@@ -224,45 +227,45 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
               </Button>
             </div>
 
-            {(auth.user.roles?.some((role) => role.name === 'admin') || 
-              auth.user.roles?.some((role) => 
+            {(auth.user.roles?.some((role) => role.name === 'admin') ||
+              auth.user.roles?.some((role) =>
                 role.permissions?.some((perm) => perm.name === 'export.json')
               )
             ) && (
-              <div className="flex gap-2 border-l pl-3 ml-1 border-slate-200 dark:border-slate-800">
-                <Button
-                  variant="outline"
-                  onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
-                  className="rounded-xl border-slate-200 shadow-sm"
-                >
-                  <FileJson className="w-4 h-4 mr-2" />
-                  JSON
-                </Button>
+                <div className="flex gap-2 border-l pl-3 ml-1 border-slate-200 dark:border-slate-800">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(`/api/export/documents/${document.id}/preview/json`, '_blank')}
+                    className="rounded-xl border-slate-200 shadow-sm"
+                  >
+                    <FileJson className="w-4 h-4 mr-2" />
+                    JSON
+                  </Button>
 
-                {document.status === 'approved' && (
-                  <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200 dark:border-slate-800">
-                    <Select value={transmissionFormat} onValueChange={(value: 'xml' | 'json') => setTransmissionFormat(value)}>
-                      <SelectTrigger className="w-[110px] rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="xml">XML Format</SelectItem>
-                        <SelectItem value="json">JSON Format</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    <Button
-                      onClick={handleSendToHost}
-                      disabled={isSending}
-                      className={`${isOutFlow ? 'bg-amber-500 hover:bg-amber-600' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-xl shadow-lg ${flowShadow} px-6`}
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      {isSending ? 'Mengirim...' : 'Send to Host'}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
+                  {document.status === 'approved' && (
+                    <div className="flex items-center gap-2 ml-2 pl-2 border-l border-slate-200 dark:border-slate-800">
+                      <Select value={transmissionFormat} onValueChange={(value: 'xml' | 'json') => setTransmissionFormat(value)}>
+                        <SelectTrigger className="w-[110px] rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="xml">XML Format</SelectItem>
+                          <SelectItem value="json">JSON Format</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Button
+                        onClick={handleSendToHost}
+                        disabled={isSending}
+                        className={`${isOutFlow ? 'bg-amber-500 hover:bg-amber-600' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-xl shadow-lg ${flowShadow} px-6`}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {isSending ? 'Mengirim...' : 'Send to Host'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
           </div>
         </div>
 
@@ -270,33 +273,30 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
         <div className="flex p-1 space-x-1 bg-slate-100 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-slate-800 sticky top-4 z-10 backdrop-blur-md shadow-lg shadow-slate-200/20 dark:shadow-none transition-all duration-300">
           <button
             onClick={() => setActiveTab('header')}
-            className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${
-              activeTab === 'header' 
-                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700` 
+            className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${activeTab === 'header'
+                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
                 : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
-            }`}
+              }`}
           >
             <Info className="w-4 h-4 mr-2" />
             Informasi Header
           </button>
           <button
             onClick={() => setActiveTab('tangki')}
-            className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${
-              activeTab === 'tangki' 
-                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700` 
+            className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${activeTab === 'tangki'
+                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
                 : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
-            }`}
+              }`}
           >
             <Package className="w-4 h-4 mr-2" />
             Daftar Tangki ({document.tangki.length})
           </button>
           <button
             onClick={() => setActiveTab('waktu')}
-            className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${
-              activeTab === 'waktu' 
-                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700` 
+            className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${activeTab === 'waktu'
+                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
                 : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
-            }`}
+              }`}
           >
             <Clock className="w-4 h-4 mr-2" />
             Waktu & Aktivitas
@@ -365,6 +365,15 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                       </div>
                     </div>
 
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                        Estimasi Kedatangan (Tiba)
+                      </label>
+                      <div className="mt-1 font-bold text-slate-900 dark:text-slate-100">
+                        {formatDate(document.tgl_tiba)}
+                      </div>
+                    </div>
+
                     {document.keterangan && (
                       <div className="col-span-full pt-4 border-t border-slate-100 dark:border-slate-800">
                         <label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
@@ -404,66 +413,94 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                       {/* Section Content */}
                       <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Jenis Isi & Kemasan</label>
-                        <div className="font-bold text-slate-900 dark:text-slate-50">{tangki.jenis_isi}</div>
-                        <div className="text-xs text-slate-500 font-medium">{tangki.jenis_kemasan || 'N/A'}</div>
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Identitas Tangki</label>
+                        <div className="font-bold text-slate-900 dark:text-slate-50 flex items-center gap-2">
+                          {tangki.no_tangki}
+                          {tangki.seri_out && (
+                            <Badge variant="outline" className="h-5 px-1.5 text-[10px] bg-slate-100 text-slate-500 rounded-md">SERI: {tangki.seri_out}</Badge>
+                          )}
+                        </div>
+                        <div className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                          <span className="text-[10px] text-slate-400">PLAT:</span> {tangki.no_pol || '-'}
+                        </div>
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Kapasitas & Muatan</label>
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Kapasitas & Satuan</label>
                         <div className="font-bold text-slate-900 dark:text-slate-50">
                           {tangki.jumlah_isi.toLocaleString('id-ID')} / {tangki.kapasitas.toLocaleString('id-ID')}
                           <span className={`text-xs ${flowAccent} ml-1.5`}>{tangki.satuan}</span>
                         </div>
-                        <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full mt-2 overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-1000 ${
-                              parseFloat(calculatePercentage(tangki.jumlah_isi, tangki.kapasitas)) > 90 ? 'bg-rose-500' : (isOutFlow ? 'bg-amber-500' : 'bg-blue-500')
-                            }`}
-                            style={{ width: `${calculatePercentage(tangki.jumlah_isi, tangki.kapasitas)}%` }}
-                          />
+                        <div className="text-[10px] font-bold text-slate-500">
+                          {tangki.jml_satuan?.toLocaleString('id-ID') || 0} {tangki.jns_satuan || '-'}
                         </div>
-                        <div className="text-[10px] font-bold text-slate-400 text-right mt-1">{calculatePercentage(tangki.jumlah_isi, tangki.kapasitas)}% Filled</div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Jenis & Kondisi</label>
+                        <div className="font-bold text-slate-900 dark:text-slate-50 text-xs">{tangki.jenis_isi}</div>
+                        <div className="text-[10px] text-slate-500 font-medium">{tangki.jenis_kemasan || 'TIPE: N/A'}</div>
                       </div>
 
                       <div className="space-y-1">
                         <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Dokumen BL/AWB</label>
-                        <div className="font-bold text-slate-900 dark:text-slate-50">{tangki.no_bl_awb || '-'}</div>
-                        <div className="text-xs text-slate-500 font-medium">{formatDate(tangki.tgl_bl_awb)}</div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Data BC1.1</label>
-                        <div className="font-bold text-slate-900 dark:text-slate-50">{tangki.no_bc11 || '-'}</div>
-                        <div className="text-xs text-slate-500 font-medium">{formatDate(tangki.tgl_bc11)} (Pos: {tangki.no_pos_bc11 || '-'})</div>
+                        <div className="font-bold text-slate-900 dark:text-slate-50 text-xs">{tangki.no_bl_awb || '-'}</div>
+                        <div className="text-[10px] text-slate-500 font-medium">{formatDate(tangki.tgl_bl_awb)}</div>
                       </div>
 
                       {/* Second Row */}
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Consignee (Penerima)</label>
-                        <div className="font-bold text-slate-900 dark:text-slate-50 uppercase text-xs">{tangki.consignee || '-'}</div>
+                      <div className="space-y-3 lg:col-span-2">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Dokumen Pabean (BC1.1)</label>
+                          <div className="font-bold text-slate-900 dark:text-slate-50 text-xs">
+                            {tangki.no_bc11 || '-'}
+                            <span className="text-slate-400 ml-2 font-normal">Pos: {tangki.no_pos_bc11 || '-'}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-medium italic">{formatDate(tangki.tgl_bc11)}</div>
+                        </div>
+                        <div className="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Dokumen In/Out ({tangki.kd_dok_inout || '-'})</label>
+                          <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                            {tangki.no_dok_inout || '-'}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-medium italic">{formatDate(tangki.tgl_dok_inout)}</div>
+                        </div>
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Dimensi & Berat</label>
-                        <div className="text-xs font-bold text-slate-900 dark:text-slate-50">
-                          DIM: {tangki.panjang || 0}x{tangki.lebar || 0}x{tangki.tinggi || 0} m
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Logistik & Angkutan</label>
+                        <div className="text-[10px] font-bold text-slate-800 flex flex-col gap-1">
+                          <span>MUAT: {tangki.pel_muat || '-'}</span>
+                          <span>TRANSIT: {tangki.pel_transit || '-'}</span>
+                          <span>BONGKAR: {tangki.pel_bongkar || '-'}</span>
                         </div>
-                        <div className="text-xs text-slate-500 font-medium">
-                          BRT: {tangki.berat_kosong || 0}kg (K) / {tangki.berat_isi || 0}kg (I)
+                        <div className="pt-2">
+                          <Badge variant="outline" className="text-[9px] font-bold py-0 h-4">{tangki.kd_sar_angkut_inout || 'UNKNOWN'}</Badge>
                         </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Pelabuhan Muat/Bongkar</label>
-                        <div className="text-xs font-bold text-slate-900 dark:text-slate-50">MUAT: {tangki.pel_muat || '-'}</div>
-                        <div className="text-xs text-slate-500 font-medium">BKR: {tangki.pel_bongkar || '-'}</div>
                       </div>
 
                       <div className="space-y-1">
                         <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Segel Perusahaan/BC</label>
-                        <div className="text-xs font-bold text-emerald-600">{tangki.no_segel_perusahaan || '-'}</div>
-                        <div className="text-xs font-medium text-slate-400">{tangki.no_segel_bc || '-'}</div>
+                        <div className="text-[10px] font-bold text-emerald-600 uppercase italic">PSG: {tangki.no_segel_perusahaan || '-'}</div>
+                        <div className="text-[10px] font-medium text-slate-400 uppercase italic">SBC: {tangki.no_segel_bc || '-'}</div>
+                      </div>
+
+                      <div className="col-span-full pt-4 border-t border-slate-100 dark:border-slate-800">
+                        <div className="flex flex-col md:flex-row justify-between gap-4">
+                          <div className="space-y-1 flex-1">
+                            <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Consignee (Penerima)</label>
+                            <div className="text-xs font-black text-slate-900 dark:text-slate-50 uppercase tracking-tight">
+                              {tangki.consignee || 'N/A'}
+                              {tangki.id_consignee && <span className="text-[10px] font-normal text-slate-400 ml-2">[{tangki.id_consignee}]</span>}
+                            </div>
+                          </div>
+                          <div className="space-y-1 flex-1">
+                            <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Produksi & Kedaluwarsa</label>
+                            <div className="text-[10px] font-bold text-slate-600">
+                              PROD: {formatDate(tangki.tgl_produksi)} | EXP: {formatDate(tangki.tgl_expired)}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -497,15 +534,7 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-6 pt-6 border-t border-slate-100 dark:border-slate-800">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-                      <Package className="w-6 h-6" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Estimasi Kedatangan (Tiba)</label>
-                      <div className="font-bold text-slate-900 dark:text-slate-50">{formatDate(document.tgl_tiba)}</div>
-                    </div>
-                  </div>
+
                 </CardContent>
               </Card>
 
@@ -522,14 +551,14 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                       <div className="space-y-2">
                         <div className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-widest">GATE IN (MASUK)</div>
                         <div className="flex items-center gap-6">
-                           <div className="space-y-0.5">
-                             <div className="text-xs text-slate-400 font-bold uppercase">Tanggal</div>
-                             <div className="font-bold text-slate-900 dark:text-slate-50">{formatDate(document.tgl_gate_in)}</div>
-                           </div>
-                           <div className="space-y-0.5">
-                             <div className="text-xs text-slate-400 font-bold uppercase">Pukul</div>
-                             <div className="font-bold text-slate-900 dark:text-slate-50">{document.jam_gate_in || '-'}</div>
-                           </div>
+                          <div className="space-y-0.5">
+                            <div className="text-xs text-slate-400 font-bold uppercase">Tanggal</div>
+                            <div className="font-bold text-slate-900 dark:text-slate-50">{formatDate(document.tgl_gate_in)}</div>
+                          </div>
+                          <div className="space-y-0.5">
+                            <div className="text-xs text-slate-400 font-bold uppercase">Pukul</div>
+                            <div className="font-bold text-slate-900 dark:text-slate-50">{document.jam_gate_in || '-'}</div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -539,14 +568,14 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                       <div className="space-y-2">
                         <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">GATE OUT (KELUAR)</div>
                         <div className="flex items-center gap-6">
-                           <div className="space-y-0.5">
-                             <div className="text-xs text-slate-400 font-bold uppercase">Tanggal</div>
-                             <div className="font-bold text-slate-900 dark:text-slate-50">{formatDate(document.tgl_gate_out)}</div>
-                           </div>
-                           <div className="space-y-0.5">
-                             <div className="text-xs text-slate-400 font-bold uppercase">Pukul</div>
-                             <div className="font-bold text-slate-900 dark:text-slate-50">{document.jam_gate_out || '-'}</div>
-                           </div>
+                          <div className="space-y-0.5">
+                            <div className="text-xs text-slate-400 font-bold uppercase">Tanggal</div>
+                            <div className="font-bold text-slate-900 dark:text-slate-50">{formatDate(document.tgl_gate_out)}</div>
+                          </div>
+                          <div className="space-y-0.5">
+                            <div className="text-xs text-slate-400 font-bold uppercase">Pukul</div>
+                            <div className="font-bold text-slate-900 dark:text-slate-50">{document.jam_gate_out || '-'}</div>
+                          </div>
                         </div>
                       </div>
                     </div>
