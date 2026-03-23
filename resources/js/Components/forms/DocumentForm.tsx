@@ -43,6 +43,9 @@ const FIELD_LABELS: Record<string, string> = {
   kd_sar_angkut_inout: 'Sarana Angkut',
   jns_satuan: 'Jenis Satuan',
   jml_satuan: 'Jml. Satuan',
+  pel_bongkar: 'Pelabuhan Bongkar',
+  no_dok_ijin_tps: 'No. Ijin TPS',
+  tgl_dok_ijin_tps: 'Tgl. Ijin TPS',
 }
 
 // Validation schema
@@ -66,11 +69,11 @@ const documentSchema = z.object({
     no_bl_awb: z.string().optional(),
     tgl_bl_awb: z.string().optional(),
     id_consignee: z.string().optional(),
-    consignee: z.string().optional(),
+    consignee: z.string().min(1, 'Consignee wajib diisi'),
     no_bc11: z.string().optional(),
     tgl_bc11: z.string().optional(),
     no_pos_bc11: z.string().optional(),
-    jml_satuan: z.coerce.number().optional(),
+    jml_satuan: z.coerce.number().min(0.001, 'Jml Satuan harus > 0'),
     jns_satuan: z.string().optional(),
     kd_dok_inout: z.string().optional(),
     no_dok_inout: z.string().optional(),
@@ -97,9 +100,9 @@ const documentSchema = z.object({
     wk_inout: z.string().optional(),
     pel_muat: z.string().optional(),
     pel_transit: z.string().optional(),
-    pel_bongkar: z.string().optional(),
-    no_dok_ijin_tps: z.string().optional(),
-    tgl_dok_ijin_tps: z.string().optional(),
+    pel_bongkar: z.string().min(1, 'Pelabuhan Bongkar wajib diisi'),
+    no_dok_ijin_tps: z.string().min(1, 'No Ijin TPS wajib diisi'),
+    tgl_dok_ijin_tps: z.string().min(1, 'Tgl Ijin TPS wajib diisi'),
   })).min(1, 'Minimal harus ada 1 tangki'),
 })
 
@@ -144,7 +147,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
     setValue,
     watch,
   } = useForm<DocumentFormData>({
-    resolver: zodResolver(documentSchema),
+    resolver: zodResolver(documentSchema) as any,
     defaultValues: {
       kd_dok: document?.kd_dok || '',
       kd_tps: document?.kd_tps || '',
@@ -321,6 +324,8 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
       no_bc11: '',
       tgl_bc11: '',
       no_pos_bc11: '',
+      jml_satuan: 0,
+      jns_satuan: '',
       jenis_isi: '',
       jenis_kemasan: '',
       kapasitas: 0,
@@ -342,6 +347,8 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
       pel_muat: '',
       pel_transit: '',
       pel_bongkar: '',
+      no_dok_ijin_tps: '',
+      tgl_dok_ijin_tps: '',
     })
   }
 
@@ -496,7 +503,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
         </button>
       </div>
 
-      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(handleFormSubmit as any)} className="space-y-6">
         {activeTab === 'header' && (
           <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className={`border-slate-200 shadow-sm overflow-hidden border-l-4 ${flowType === 'IN' ? 'border-l-blue-500' : 'border-l-amber-500'}`}>
@@ -755,8 +762,8 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-slate-400">Jml Satuan</Label>
-                        <Input type="number" step="0.001" {...register(`tangki.${index}.jml_satuan` as const)} className="h-8 text-xs" />
+                        <Label className="text-[10px] font-bold uppercase text-slate-400">Jml Satuan *</Label>
+                        <Input type="number" step="0.001" {...register(`tangki.${index}.jml_satuan` as const)} className={`h-8 text-xs ${errors.tangki?.[index]?.jml_satuan ? 'border-red-500' : ''}`} />
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[10px] font-bold uppercase text-slate-400">Jenis Sat</Label>
@@ -790,8 +797,8 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
                     {/* Consignee */}
                     <div className="space-y-2 lg:col-span-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Consignee (Penerima)</Label>
-                      <Input {...register(`tangki.${index}.consignee` as const)} className="rounded-lg" placeholder="NAMA PERUSAHAAN" />
+                      <Label className="text-xs font-bold uppercase text-slate-500">Consignee (Penerima) *</Label>
+                      <Input {...register(`tangki.${index}.consignee` as const)} className={`rounded-lg ${errors.tangki?.[index]?.consignee ? 'border-red-500' : ''}`} placeholder="NAMA PERUSAHAAN" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">ID Consignee</Label>
@@ -848,8 +855,8 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                       <Input {...register(`tangki.${index}.pel_transit` as const)} className="rounded-lg" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Pel. Bongkar</Label>
-                      <Input {...register(`tangki.${index}.pel_bongkar` as const)} className="rounded-lg" />
+                      <Label className="text-xs font-bold uppercase text-slate-500">Pel. Bongkar *</Label>
+                      <Input {...register(`tangki.${index}.pel_bongkar` as const)} className={`rounded-lg ${errors.tangki?.[index]?.pel_bongkar ? 'border-red-500' : ''}`} />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">Wkt. In/Out</Label>
@@ -902,12 +909,12 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
                     {/* TPS Permit Data */}
                     <div className="space-y-2 lg:col-span-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500 text-blue-500">No. Dok Ijin TPS (Impor : Nomor SP2; Ekspor : Kartu Ekspor)</Label>
-                      <Input {...register(`tangki.${index}.no_dok_ijin_tps` as const)} className="rounded-lg border-blue-200 focus:border-blue-400" placeholder="KEP-..." />
+                      <Label className="text-xs font-bold uppercase text-slate-500 text-blue-500">No. Dok Ijin TPS * (Impor: Nomor SP2; Ekspor: Kartu Ekspor)</Label>
+                      <Input {...register(`tangki.${index}.no_dok_ijin_tps` as const)} className={`rounded-lg border-blue-200 focus:border-blue-400 ${errors.tangki?.[index]?.no_dok_ijin_tps ? 'border-red-500' : ''}`} placeholder="KEP-..." />
                     </div>
                     <div className="space-y-2 lg:col-span-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500 text-blue-500">Tgl. Dok Ijin TPS (yyyymmdd) (Impor : Tgl. SP2; Ekspor : Tgl. Kartu Ekspor)</Label>
-                      <Input type="date" {...register(`tangki.${index}.tgl_dok_ijin_tps` as const)} className="rounded-lg border-blue-200 focus:border-blue-400" />
+                      <Label className="text-xs font-bold uppercase text-slate-500 text-blue-500">Tgl. Dok Ijin TPS * (yyyy-mm-dd) (Impor: Tgl. SP2; Ekspor: Tgl. Kartu Ekspor)</Label>
+                      <Input type="date" {...register(`tangki.${index}.tgl_dok_ijin_tps` as const)} className={`rounded-lg border-blue-200 focus:border-blue-400 ${errors.tangki?.[index]?.tgl_dok_ijin_tps ? 'border-red-500' : ''}`} />
                     </div>
 
                     {/* Location & Links */}
