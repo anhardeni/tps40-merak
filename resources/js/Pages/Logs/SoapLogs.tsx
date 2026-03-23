@@ -79,18 +79,23 @@ export default function SoapLogs({ auth, soapLogs, filters }: SoapLogsProps) {
     return new Date(dateString).toLocaleString('id-ID')
   }
 
-  const formatResponseTime = (time: number) => {
+  const formatResponseTime = (time: number | null | undefined) => {
+    if (time === null || time === undefined) return '-'
     if (time < 1000) {
       return `${time.toFixed(1)}ms`
     }
     return `${(time / 1000).toFixed(2)}s`
   }
 
-  const formatJson = (jsonString: string) => {
+  const formatJson = (data: any) => {
+    if (!data) return '-'
+    if (typeof data === 'object') {
+      return JSON.stringify(data, null, 2)
+    }
     try {
-      return JSON.stringify(JSON.parse(jsonString), null, 2)
+      return JSON.stringify(JSON.parse(data), null, 2)
     } catch {
-      return jsonString
+      return String(data)
     }
   }
 
@@ -259,6 +264,7 @@ export default function SoapLogs({ auth, soapLogs, filters }: SoapLogsProps) {
                             </td>
                             <td className="p-4">
                               <span className={`text-sm ${
+                                !log.duration_ms ? 'text-gray-500' :
                                 log.duration_ms > 2000 ? 'text-red-600' :
                                 log.duration_ms > 1000 ? 'text-yellow-600' :
                                 'text-green-600'
@@ -313,6 +319,7 @@ export default function SoapLogs({ auth, soapLogs, filters }: SoapLogsProps) {
                       
                       <div className="flex items-center justify-between pt-2 border-t">
                         <span className={`text-sm ${
+                          !log.duration_ms ? 'text-gray-500' :
                           log.duration_ms > 2000 ? 'text-red-600' :
                           log.duration_ms > 1000 ? 'text-yellow-600' :
                           'text-green-600'
