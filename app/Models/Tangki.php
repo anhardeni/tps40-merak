@@ -53,6 +53,8 @@ class Tangki extends Model
         'pel_muat',
         'pel_transit',
         'pel_bongkar',
+        'no_dok_ijin_tps',
+        'tgl_dok_ijin_tps',
     ];
 
     protected $casts = [
@@ -69,6 +71,7 @@ class Tangki extends Model
         'tgl_bl_awb' => 'date',
         'tgl_bc11' => 'date',
         'tgl_dok_inout' => 'date',
+        'tgl_dok_ijin_tps' => 'date',
         'urutan' => 'integer',
     ];
 

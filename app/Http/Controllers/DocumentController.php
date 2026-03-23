@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Storage;
 use App\Imports\TangkiImport;
 
 class DocumentController extends Controller
@@ -106,7 +107,7 @@ class DocumentController extends Controller
             'kd_gudang' => ['required', 'string', 'exists:kd_gudang,kd_gudang'],
             'no_voy_flight' => ['nullable', 'string', 'max:50'],
             'tgl_entry' => ['required', 'date'],
-            'tgl_tiba' => ['nullable', 'date'],
+            'tgl_tiba' => ['required', 'date'],
             'jam_entry' => ['required', 'string'],
             'tgl_gate_in' => ['nullable', 'date'],
             'jam_gate_in' => ['nullable', 'string'],
@@ -116,20 +117,20 @@ class DocumentController extends Controller
             'tangki' => ['required', 'array', 'min:1'],
             'tangki.*.kd_dok_inout' => ['required', 'string', 'exists:kd_dok_inout,kd_dok_inout'],
             'tangki.*.no_tangki' => ['required', 'string', 'max:50'],
-            'tangki.*.seri_out' => ['nullable', 'integer', 'min:1'],
-            'tangki.*.no_bl_awb' => ['nullable', 'string', 'max:50'],
-            'tangki.*.tgl_bl_awb' => ['nullable', 'date'],
-            'tangki.*.id_consignee' => ['nullable', 'string', 'max:50'],
-            'tangki.*.consignee' => ['nullable', 'string', 'max:200'],
-            'tangki.*.no_bc11' => ['nullable', 'string', 'max:50'],
-            'tangki.*.tgl_bc11' => ['nullable', 'date'],
-            'tangki.*.no_pos_bc11' => ['nullable', 'string', 'max:10'],
-            'tangki.*.no_pol' => ['nullable', 'string', 'max:20'],
+            'tangki.*.seri_out' => ['required', 'integer', 'min:1'],
+            'tangki.*.no_bl_awb' => ['required', 'string', 'max:50'],
+            'tangki.*.tgl_bl_awb' => ['required', 'date'],
+            'tangki.*.id_consignee' => ['required', 'string', 'max:50'],
+            'tangki.*.consignee' => ['required', 'string', 'max:200'],
+            'tangki.*.no_bc11' => ['required', 'string', 'max:6'],
+            'tangki.*.tgl_bc11' => ['required', 'date'],
+            'tangki.*.no_pos_bc11' => ['required', 'string', 'max:12'],
+            'tangki.*.no_pol' => ['required', 'string', 'max:20'],
             'tangki.*.jenis_isi' => ['required', 'string', 'max:200'],
-            'tangki.*.jenis_kemasan' => ['nullable', 'string', 'max:100'],
-            'tangki.*.jml_satuan' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.jns_satuan' => ['nullable', 'string', 'max:10'],
-            'tangki.*.kapasitas' => ['required', 'numeric', 'min:0'],
+            'tangki.*.jenis_kemasan' => ['nullable', 'string', 'max:25'],
+            'tangki.*.jml_satuan' => ['required', 'numeric', 'min:0'],
+            'tangki.*.jns_satuan' => ['required', 'string', 'max:10'],
+            'tangki.*.kapasitas' => ['nullable', 'numeric', 'min:0'],
             'tangki.*.jumlah_isi' => ['required', 'numeric', 'min:0'],
             'tangki.*.satuan' => ['required', 'string', 'max:10'],
             'tangki.*.panjang' => ['nullable', 'numeric', 'min:0'],
@@ -144,10 +145,12 @@ class DocumentController extends Controller
             'tangki.*.no_segel_bc' => ['nullable', 'string', 'max:50'],
             'tangki.*.no_segel_perusahaan' => ['nullable', 'string', 'max:50'],
             'tangki.*.lokasi_penempatan' => ['nullable', 'string', 'max:100'],
-            'tangki.*.wk_inout' => ['nullable', 'string', 'max:50'],
-            'tangki.*.pel_muat' => ['nullable', 'string', 'max:10'],
+            'tangki.*.wk_inout' => ['required', 'string', 'max:50'],
+            'tangki.*.pel_muat' => ['required', 'string', 'max:10'],
             'tangki.*.pel_transit' => ['nullable', 'string', 'max:10'],
-            'tangki.*.pel_bongkar' => ['nullable', 'string', 'max:10'],
+            'tangki.*.pel_bongkar' => ['required', 'string', 'max:10'],
+            'tangki.*.no_dok_ijin_tps' => ['required', 'string', 'max:35'],
+            'tangki.*.tgl_dok_ijin_tps' => ['required', 'date'],
         ]);
 
         DB::beginTransaction();
@@ -170,6 +173,8 @@ class DocumentController extends Controller
                 'keterangan' => $validated['keterangan'],
                 'status' => 'DRAFT',
                 'username' => auth()->user()->name ?? 'system',
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
             ]);
 
             // Create tangki with auto seri_out generation
@@ -190,7 +195,7 @@ class DocumentController extends Controller
             return redirect()->route('documents.show', $document)
                 ->with('success', 'Dokumen berhasil dibuat.');
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollback();
 
             return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan dokumen: '.$e->getMessage()]);
@@ -250,9 +255,9 @@ class DocumentController extends Controller
             'kd_tps' => ['required', 'string', 'exists:kd_tps,kd_tps'],
             'nm_angkut_id' => ['required', 'integer', 'exists:nm_angkut,id'],
             'kd_gudang' => ['required', 'string', 'exists:kd_gudang,kd_gudang'],
-            'no_voy_flight' => ['nullable', 'string', 'max:50'],
+            'no_voy_flight' => ['required', 'string', 'max:50'],
             'tgl_entry' => ['required', 'date'],
-            'tgl_tiba' => ['nullable', 'date'],
+            'tgl_tiba' => ['required', 'date'],
             'jam_entry' => ['required', 'string'],
             'tgl_gate_in' => ['nullable', 'date'],
             'jam_gate_in' => ['nullable', 'string'],
@@ -262,19 +267,19 @@ class DocumentController extends Controller
             'tangki' => ['required', 'array', 'min:1'],
             'tangki.*.kd_dok_inout' => ['required', 'string', 'exists:kd_dok_inout,kd_dok_inout'],
             'tangki.*.no_tangki' => ['required', 'string', 'max:50'],
-            'tangki.*.seri_out' => ['nullable', 'integer', 'min:1'],
-            'tangki.*.no_bl_awb' => ['nullable', 'string', 'max:50'],
-            'tangki.*.tgl_bl_awb' => ['nullable', 'date'],
-            'tangki.*.id_consignee' => ['nullable', 'string', 'max:50'],
-            'tangki.*.consignee' => ['nullable', 'string', 'max:200'],
-            'tangki.*.no_bc11' => ['nullable', 'string', 'max:50'],
-            'tangki.*.tgl_bc11' => ['nullable', 'date'],
-            'tangki.*.no_pos_bc11' => ['nullable', 'string', 'max:10'],
-            'tangki.*.no_pol' => ['nullable', 'string', 'max:20'],
+            'tangki.*.seri_out' => ['required', 'integer', 'min:1'],
+            'tangki.*.no_bl_awb' => ['required', 'string', 'max:50'],
+            'tangki.*.tgl_bl_awb' => ['required', 'date'],
+            'tangki.*.id_consignee' => ['required', 'string', 'max:50'],
+            'tangki.*.consignee' => ['required', 'string', 'max:200'],
+            'tangki.*.no_bc11' => ['required', 'string', 'max:50'],
+            'tangki.*.tgl_bc11' => ['required', 'date'],
+            'tangki.*.no_pos_bc11' => ['required', 'string', 'max:10'],
+            'tangki.*.no_pol' => ['required', 'string', 'max:20'],
             'tangki.*.jenis_isi' => ['required', 'string', 'max:200'],
             'tangki.*.jenis_kemasan' => ['nullable', 'string', 'max:100'],
-            'tangki.*.jml_satuan' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.jns_satuan' => ['nullable', 'string', 'max:10'],
+            'tangki.*.jml_satuan' => ['required', 'numeric', 'min:0'],
+            'tangki.*.jns_satuan' => ['required', 'string', 'max:10'],
             'tangki.*.kapasitas' => ['required', 'numeric', 'min:0'],
             'tangki.*.jumlah_isi' => ['required', 'numeric', 'min:0'],
             'tangki.*.satuan' => ['required', 'string', 'max:10'],
@@ -290,10 +295,12 @@ class DocumentController extends Controller
             'tangki.*.no_segel_bc' => ['nullable', 'string', 'max:50'],
             'tangki.*.no_segel_perusahaan' => ['nullable', 'string', 'max:50'],
             'tangki.*.lokasi_penempatan' => ['nullable', 'string', 'max:100'],
-            'tangki.*.wk_inout' => ['nullable', 'string', 'max:50'],
-            'tangki.*.pel_muat' => ['nullable', 'string', 'max:10'],
+            'tangki.*.wk_inout' => ['required', 'string', 'max:50'],
+            'tangki.*.pel_muat' => ['required', 'string', 'max:10'],
             'tangki.*.pel_transit' => ['nullable', 'string', 'max:10'],
-            'tangki.*.pel_bongkar' => ['nullable', 'string', 'max:10'],
+            'tangki.*.pel_bongkar' => ['required', 'string', 'max:10'],
+            'tangki.*.no_dok_ijin_tps' => ['required', 'string', 'max:35'],
+            'tangki.*.tgl_dok_ijin_tps' => ['required', 'date'],
         ]);
 
         DB::beginTransaction();
@@ -468,6 +475,8 @@ class DocumentController extends Controller
             'tangki.*.tgl_expired' => ['nullable', 'date'],
             'tangki.*.no_segel_bc' => ['nullable', 'string', 'max:50'],
             'tangki.*.no_segel_perusahaan' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_dok_ijin_tps' => ['nullable', 'string', 'max:35'],
+            'tangki.*.tgl_dok_ijin_tps' => ['nullable', 'date'],
             'tangki.*.keterangan' => ['nullable', 'string'],
         ]);
 
@@ -553,7 +562,7 @@ class DocumentController extends Controller
     /**
      * Parse Excel file and return data for frontend form
      */
-    public function parseTangkiExcel(Request $request)
+    public function import(Request $request)
     {
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls,csv',
@@ -603,6 +612,8 @@ class DocumentController extends Controller
                     'tgl_expired' => $this->transformDate($row['tgl_expired'] ?? null),
                     'no_segel_bc' => $row['no_segel_bc'] ?? '',
                     'no_segel_perusahaan' => $row['no_segel_perusahaan'] ?? '',
+                    'no_dok_ijin_tps' => $row['no_dok_ijin_tps'] ?? '',
+                    'tgl_dok_ijin_tps' => $this->transformDate($row['tgl_dok_ijin_tps'] ?? null),
                     'keterangan' => $row['keterangan'] ?? '',
                 ];
             });
@@ -679,6 +690,8 @@ class DocumentController extends Controller
                     'tgl_expired' => $this->transformDate($row['tgl_expired'] ?? null),
                     'no_segel_bc' => $row['no_segel_bc'] ?? null,
                     'no_segel_perusahaan' => $row['no_segel_perusahaan'] ?? null,
+                    'no_dok_ijin_tps' => $row['no_dok_ijin_tps'] ?? null,
+                    'tgl_dok_ijin_tps' => $this->transformDate($row['tgl_dok_ijin_tps'] ?? null),
                     'keterangan' => $row['keterangan'] ?? null,
                 ];
 
@@ -727,12 +740,34 @@ class DocumentController extends Controller
     private function transformDate($value)
     {
         if (! $value) return null;
-        try {
-            return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('Y-m-d');
-        } catch (\Exception $e) {
-            // Fallback if it's already a string date
-            return date('Y-m-d', strtotime($value));
+        
+        // If it's numeric, it's likely an Excel serial date
+        if (is_numeric($value)) {
+            try {
+                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                // Fallback to string parsing if conversion fails
+            }
         }
+
+        // Fallback for direct string dates
+        $timestamp = strtotime($value);
+        if ($timestamp !== false) {
+            return date('Y-m-d', $timestamp);
+        }
+
+        return null;
+    }
+
+    public function downloadTemplate()
+    {
+        $path = 'template_import_tangki.xlsx';
+        
+        if (!Storage::disk('public')->exists($path)) {
+            return back()->with('error', 'File template tidak ditemukan.');
+        }
+
+        return Storage::disk('public')->download($path, 'Template_Import_Tangki.xlsx');
     }
 
     /**
@@ -751,4 +786,6 @@ class DocumentController extends Controller
             'jenisKemasan' => ReferensiJenisKemasan::select('kode_jenis_kemasan', 'nama_jenis_kemasan')->get(),
         ];
     }
+
+    
 }

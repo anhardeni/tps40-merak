@@ -80,6 +80,8 @@ interface Document {
     pel_muat?: string
     pel_transit?: string
     pel_bongkar?: string
+    no_dok_ijin_tps?: string
+    tgl_dok_ijin_tps?: string
   }>
 }
 
@@ -274,8 +276,8 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
           <button
             onClick={() => setActiveTab('header')}
             className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${activeTab === 'header'
-                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
-                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
+              ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
               }`}
           >
             <Info className="w-4 h-4 mr-2" />
@@ -284,8 +286,8 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
           <button
             onClick={() => setActiveTab('tangki')}
             className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${activeTab === 'tangki'
-                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
-                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
+              ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
               }`}
           >
             <Package className="w-4 h-4 mr-2" />
@@ -294,8 +296,8 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
           <button
             onClick={() => setActiveTab('waktu')}
             className={`flex-1 flex items-center justify-center py-3 text-sm font-bold rounded-lg transition-all duration-200 ${activeTab === 'waktu'
-                ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
-                : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
+              ? `bg-white dark:bg-slate-800 ${flowAccent} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
+              : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
               }`}
           >
             <Clock className="w-4 h-4 mr-2" />
@@ -483,6 +485,12 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                         <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Segel Perusahaan/BC</label>
                         <div className="text-[10px] font-bold text-emerald-600 uppercase italic">PSG: {tangki.no_segel_perusahaan || '-'}</div>
                         <div className="text-[10px] font-medium text-slate-400 uppercase italic">SBC: {tangki.no_segel_bc || '-'}</div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest text-blue-500">Ijin TPS</label>
+                        <div className="text-[10px] font-bold text-slate-800 dark:text-slate-200">NO: {tangki.no_dok_ijin_tps || '-'}</div>
+                        <div className="text-[10px] text-slate-500 italic uppercase">TGL: {formatDate(tangki.tgl_dok_ijin_tps)}</div>
                       </div>
 
                       <div className="col-span-full pt-4 border-t border-slate-100 dark:border-slate-800">

@@ -32,60 +32,69 @@ import {
 interface Tangki {
   id: number
   no_tangki: string
-  kap_tangki: number
-  jns_isi: string
-  kd_tps: string
-  kode_kms: string
-  ur_brg: string
-  asal_brg: string
-  volume: number
-  teus: number
-  berat: number
-  density?: number
-  seri_in?: string
-  tgl_in?: string
-  jam_in?: string
+  kapasitas: number
+  jenis_isi: string
+  jml_satuan: number
+  jns_satuan: string
+  berat_isi: number
   seri_out?: string
-  tgl_out?: string
-  jam_out?: string
+  wk_inout?: string
   no_bl_awb?: string
   consignee?: string
+  id_consignee?: string
+  no_bc11?: string
+  tgl_bc11?: string
+  no_pos_bc11?: string
   pel_muat?: string
-  tgl_muat?: string
+  pel_transit?: string
+  pel_bongkar?: string
 }
 
 interface Document {
   id: number
   ref_number: string
   kd_dok: string
-  tgl_dok: string
-  nm_pengangkut?: string
+  tgl_entry: string
+  nm_angkut?: {
+    nm_angkut: string
+  }
   no_voy_flight?: string
   call_sign?: string
   tgl_tiba?: string
-  pel_asal?: string
+  pel_muat?: string
   pel_transit?: string
   pel_bongkar?: string
-  kd_gudang?: string
-  nm_gudang?: string
-  kd_tps?: string
-  nm_tps?: string
+  kd_gudang?: string | { kd_gudang?: string; nm_gudang?: string }
+  kd_tps?: string | { kd_tps?: string; nm_tps?: string }
   status: string
   tangki: Tangki[]
   cocotangki_status?: string
   cocotangki_sent_at?: string
-  cocotangki_response?: string
+  cocotangki_response?: any
   cocotangki_error?: string
-  validation_result?: {
-    valid: boolean
-    errors: string[]
-    warnings: string[]
-  }
   xml_preview?: string
+}
+
+interface ValidationProp {
+  valid: boolean
+  errors: string[]
+  warnings?: string[]
+}
+
+interface SubmissionStatusProp {
+  document_id: number
+  ref_number: string
+  status: string
+  sent_at?: string
+  error?: string
+  response?: any
+  tangki_count: number
 }
 
 interface Props {
   document: Document
+  validation?: ValidationProp
+  submission_status?: SubmissionStatusProp
 }
 
 const breadcrumbs = [
@@ -105,7 +114,7 @@ const getStatusBadge = (status?: string) => {
   }
 }
 
-export default function CoCoTangkiShow({ document }: Props) {
+export default function CoCoTangkiShow({ document, validation, submission_status }: Props) {
   const [xmlVisible, setXmlVisible] = useState(false)
   const [activeTab, setActiveTab] = useState('document')
 
@@ -268,14 +277,16 @@ export default function CoCoTangkiShow({ document }: Props) {
             </CardHeader>
             <CardContent>
               <div className="text-green-700 text-sm">
-                {document.cocotangki_response}
+                {typeof document.cocotangki_response === 'object' 
+                  ? (document.cocotangki_response.message || JSON.stringify(document.cocotangki_response)) 
+                  : document.cocotangki_response}
               </div>
             </CardContent>
           </Card>
         )}
 
         {/* Validation Results */}
-        {document.validation_result && (
+        {validation && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -286,7 +297,7 @@ export default function CoCoTangkiShow({ document }: Props) {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                  {document.validation_result.valid ? (
+                  {validation.valid ? (
                     <Badge className="bg-green-100 text-green-800">
                       <CheckCircle className="w-3 h-3 mr-1" />
                       Valid
@@ -299,22 +310,22 @@ export default function CoCoTangkiShow({ document }: Props) {
                   )}
                 </div>
 
-                {document.validation_result.errors.length > 0 && (
+                {validation.errors && validation.errors.length > 0 && (
                   <div>
                     <h4 className="font-medium text-red-800 mb-2">Errors:</h4>
                     <ul className="list-disc list-inside space-y-1">
-                      {document.validation_result.errors.map((error, index) => (
+                      {validation.errors.map((error, index) => (
                         <li key={index} className="text-red-600 text-sm">{error}</li>
                       ))}
                     </ul>
                   </div>
                 )}
 
-                {document.validation_result.warnings.length > 0 && (
+                {validation.warnings && validation.warnings.length > 0 && (
                   <div>
                     <h4 className="font-medium text-yellow-800 mb-2">Warnings:</h4>
                     <ul className="list-disc list-inside space-y-1">
-                      {document.validation_result.warnings.map((warning, index) => (
+                      {validation.warnings.map((warning, index) => (
                         <li key={index} className="text-yellow-600 text-sm">{warning}</li>
                       ))}
                     </ul>
@@ -370,12 +381,12 @@ export default function CoCoTangkiShow({ document }: Props) {
                       <div>{document.kd_dok}</div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-slate-600">Tanggal Dokumen</label>
-                      <div>{new Date(document.tgl_dok).toLocaleDateString('id-ID')}</div>
+                      <label className="text-sm font-medium text-slate-600">Tanggal Entry</label>
+                      <div>{document.tgl_entry ? new Date(document.tgl_entry).toLocaleDateString('id-ID') : '-'}</div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-600">Nama Pengangkut</label>
-                      <div>{document.nm_pengangkut || '-'}</div>
+                      <div>{document.nm_angkut?.nm_angkut || '-'}</div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-600">No. Voyage/Flight</label>
@@ -393,8 +404,8 @@ export default function CoCoTangkiShow({ document }: Props) {
                       <div>{document.tgl_tiba ? new Date(document.tgl_tiba).toLocaleDateString('id-ID') : '-'}</div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-slate-600">Pelabuhan Asal</label>
-                      <div>{document.pel_asal || '-'}</div>
+                      <label className="text-sm font-medium text-slate-600">Pelabuhan Muat</label>
+                      <div>{document.pel_muat || '-'}</div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-600">Pelabuhan Transit</label>
@@ -406,11 +417,11 @@ export default function CoCoTangkiShow({ document }: Props) {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-600">Gudang TPS</label>
-                      <div>{document.nm_gudang || document.kd_gudang || '-'}</div>
+                      <div>{typeof document.kd_gudang === 'object' ? document.kd_gudang?.kd_gudang : (document.kd_gudang || '-')}</div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-600">TPS</label>
-                      <div>{document.nm_tps || document.kd_tps || '-'}</div>
+                      <div>{typeof document.kd_tps === 'object' ? document.kd_tps?.kd_tps : (document.kd_tps || '-')}</div>
                     </div>
                   </div>
                 </div>
@@ -430,10 +441,10 @@ export default function CoCoTangkiShow({ document }: Props) {
                       <TableHead>No. Tangki</TableHead>
                       <TableHead>Kapasitas</TableHead>
                       <TableHead>Jenis Isi</TableHead>
-                      <TableHead>Uraian Barang</TableHead>
-                      <TableHead>Volume</TableHead>
-                      <TableHead>Berat</TableHead>
-                      <TableHead>Seri In/Out</TableHead>
+                      <TableHead>Jumlah Satuan</TableHead>
+                      <TableHead>Satuan</TableHead>
+                      <TableHead>Berat Isi</TableHead>
+                      <TableHead>Seri Out</TableHead>
                       <TableHead>Consignee</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -441,24 +452,14 @@ export default function CoCoTangkiShow({ document }: Props) {
                     {document.tangki.map((tangki) => (
                       <TableRow key={tangki.id}>
                         <TableCell className="font-mono">{tangki.no_tangki}</TableCell>
-                        <TableCell>{tangki.kap_tangki.toLocaleString()}</TableCell>
-                        <TableCell>{tangki.jns_isi}</TableCell>
+                        <TableCell>{tangki.kapasitas?.toLocaleString() || '-'}</TableCell>
+                        <TableCell>{tangki.jenis_isi}</TableCell>
+                        <TableCell>{tangki.jml_satuan?.toLocaleString() || '-'}</TableCell>
+                        <TableCell>{tangki.jns_satuan}</TableCell>
+                        <TableCell>{tangki.berat_isi?.toLocaleString() || '-'}</TableCell>
+                        <TableCell>{tangki.seri_out || '-'}</TableCell>
                         <TableCell>
-                          <div className="max-w-xs">
-                            <div className="text-sm font-medium">{tangki.ur_brg}</div>
-                            <div className="text-xs text-slate-500">{tangki.asal_brg}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{tangki.volume.toLocaleString()}</TableCell>
-                        <TableCell>{tangki.berat.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div>In: {tangki.seri_in || '-'}</div>
-                            <div>Out: {tangki.seri_out || '-'}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
+                          <div className="text-sm italic">
                             {tangki.consignee || '-'}
                           </div>
                         </TableCell>

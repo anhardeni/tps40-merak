@@ -9,13 +9,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card"
 import { Select } from "@/Components/ui/select"
 import { Textarea } from "@/Components/ui/textarea"
 import { Plus, Trash2, Save, Download, Send, FileUp, AlertCircle, CheckCircle2, Clock, Info, Package } from "lucide-react"
-import { router } from '@inertiajs/react'
+import { router, usePage } from '@inertiajs/react'
 import axios from 'axios'
 import { ArrowRightLeft, Calendar, LogIn, LogOut } from "lucide-react"
+import GradientButton from "@/Components/ui/gradient-button";
 
 // Document code mapping for context-aware filtering
 const DOK_IN_CODES = ['1', '2', '6', '8', '9']
 const DOK_OUT_CODES = ['3', '4', '5', '7']
+
+// Human readable labels for error mapping
+const FIELD_LABELS: Record<string, string> = {
+  kd_dok: 'Kode Dokumen',
+  kd_tps: 'Kode TPS',
+  nm_angkut_id: 'Nama Angkutan',
+  kd_gudang: 'Gudang',
+  no_voy_flight: 'No. Voy/Flight',
+  tgl_entry: 'Tgl. Entry',
+  jam_entry: 'Jam Entry',
+  tgl_tiba: 'Tgl. Tiba',
+  tgl_gate_in: 'Tgl. Gate In',
+  jam_gate_in: 'Jam. Gate In',
+  tgl_gate_out: 'Tgl. Gate Out',
+  jam_gate_out: 'Jam. Gate Out',
+  no_tangki: 'No. Tangki',
+  jenis_isi: 'Jenis Isi',
+  kapasitas: 'Kapasitas',
+  jumlah_isi: 'Jml. Isi',
+  satuan: 'Satuan',
+  kd_dok_inout: 'Kd. Dok Lalin',
+  no_dok_inout: 'No. Dok Lalin',
+  tgl_dok_inout: 'Tgl. Dok Lalin',
+  kd_sar_angkut_inout: 'Sarana Angkut',
+  jns_satuan: 'Jenis Satuan',
+  jml_satuan: 'Jml. Satuan',
+}
 
 // Validation schema
 const documentSchema = z.object({
@@ -34,7 +62,7 @@ const documentSchema = z.object({
   keterangan: z.string().optional(),
   tangki: z.array(z.object({
     no_tangki: z.string().min(1, 'Nomor tangki wajib diisi'),
-    seri_out: z.number().optional(),
+    seri_out: z.coerce.number().optional(),
     no_bl_awb: z.string().optional(),
     tgl_bl_awb: z.string().optional(),
     id_consignee: z.string().optional(),
@@ -42,7 +70,7 @@ const documentSchema = z.object({
     no_bc11: z.string().optional(),
     tgl_bc11: z.string().optional(),
     no_pos_bc11: z.string().optional(),
-    jml_satuan: z.number().optional(),
+    jml_satuan: z.coerce.number().optional(),
     jns_satuan: z.string().optional(),
     kd_dok_inout: z.string().optional(),
     no_dok_inout: z.string().optional(),
@@ -51,14 +79,14 @@ const documentSchema = z.object({
     no_pol: z.string().optional(),
     jenis_isi: z.string().min(1, 'Jenis isi wajib diisi'),
     jenis_kemasan: z.string().optional(),
-    kapasitas: z.number().min(0, 'Kapasitas harus >= 0'),
-    jumlah_isi: z.number().min(0, 'Jumlah isi harus >= 0'),
+    kapasitas: z.coerce.number().min(0, 'Kapasitas harus >= 0'),
+    jumlah_isi: z.coerce.number().min(0, 'Jumlah isi harus >= 0'),
     satuan: z.string().min(1, 'Satuan wajib diisi'),
-    panjang: z.number().optional(),
-    lebar: z.number().optional(),
-    tinggi: z.number().optional(),
-    berat_kosong: z.number().optional(),
-    berat_isi: z.number().optional(),
+    panjang: z.coerce.number().optional(),
+    lebar: z.coerce.number().optional(),
+    tinggi: z.coerce.number().optional(),
+    berat_kosong: z.coerce.number().optional(),
+    berat_isi: z.coerce.number().optional(),
     kondisi: z.string().optional(),
     keterangan: z.string().optional(),
     tgl_produksi: z.string().optional(),
@@ -70,6 +98,8 @@ const documentSchema = z.object({
     pel_muat: z.string().optional(),
     pel_transit: z.string().optional(),
     pel_bongkar: z.string().optional(),
+    no_dok_ijin_tps: z.string().optional(),
+    tgl_dok_ijin_tps: z.string().optional(),
   })).min(1, 'Minimal harus ada 1 tangki'),
 })
 
@@ -81,7 +111,8 @@ interface DocumentFormProps {
     kdDok: Array<{ kd_dok: string; nm_dok: string }>
     kdTps: Array<{ kd_tps: string; nm_tps: string }>
     nmAngkut: Array<{ id: number; nm_angkut: string; call_sign?: string }>
-    kdGudang: Array<{ kd_gudang: string; nm_gudang: string }>
+    kdGudang: Array<{ kd_gudang: string; nm_gudang: string; kd_tps?: string }>
+    kdDokInout: Array<{ kd_dok_inout: string; nm_dok_inout: string; jenis: string }>
   }
   onSubmit: (data: DocumentFormData) => void
   isLoading?: boolean
@@ -92,9 +123,17 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
+  const { props } = usePage()
+  const serverErrors = props.errors as any
+
   // Detect flow type from document data or default to IN
   const [flowType, setFlowType] = useState<'IN' | 'OUT'>(
-    document?.tangki?.[0]?.kd_dok_inout === 'OUT' ? 'OUT' : 'IN'
+    (() => {
+      const firstTangkiCode = document?.tangki?.[0]?.kd_dok_inout;
+      if (DOK_OUT_CODES.includes(firstTangkiCode)) return 'OUT';
+      if (DOK_IN_CODES.includes(firstTangkiCode)) return 'IN';
+      return document?.tangki?.[0]?.kd_dok_inout === 'OUT' ? 'OUT' : 'IN';
+    })()
   )
 
   const {
@@ -123,7 +162,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
       tangki: document?.tangki || [
         {
           no_tangki: '',
-          seri_out: 0,
+          seri_out: 1,
           no_bl_awb: '',
           tgl_bl_awb: '',
           id_consignee: '',
@@ -143,6 +182,8 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
           kapasitas: 0,
           jumlah_isi: 0,
           satuan: 'LITER',
+          no_dok_ijin_tps: '',
+          tgl_dok_ijin_tps: '',
           panjang: 0,
           lebar: 0,
           tinggi: 0,
@@ -174,7 +215,10 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
     // Ensure all tangki records have the correct flow type
     const updatedData = {
       ...data,
-      tangki: data.tangki.map(t => ({ ...t, kd_dok_inout: flowType }))
+      tangki: data.tangki.map(t => ({
+        ...t,
+        kd_dok_inout: t.kd_dok_inout || data.kd_dok
+      }))
     }
     try {
       await onSubmit(updatedData)
@@ -182,6 +226,70 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
       setIsSubmitting(false)
     }
   }
+
+  const fillDummyData = () => {
+    // Select first options from filtered lists
+    const firstDok = filteredKdDok[0]?.kd_dok || '';
+    const firstTps = referenceData.kdTps[0]?.kd_tps || '';
+    const firstAngkut = referenceData.nmAngkut[0]?.id.toString() || '';
+    const firstGudang = referenceData.kdGudang.find(g => g.kd_tps === firstTps)?.kd_gudang || referenceData.kdGudang[0]?.kd_gudang || '';
+    const firstDokInout = filteredKdDokInout[0]?.kd_dok_inout || firstDok || '';
+
+    setValue('kd_dok', firstDok);
+    setValue('kd_tps', firstTps);
+    setValue('nm_angkut_id', firstAngkut);
+    setValue('kd_gudang', firstGudang);
+    setValue('no_voy_flight', 'DUMMY-VOY-' + Math.floor(Math.random() * 999));
+    setValue('tgl_tiba', new Date().toISOString().split('T')[0]);
+    setValue('keterangan', 'DUMMY DATA FOR TESTING PURPOSES');
+
+    const dummyTangki = [
+      {
+        no_tangki: 'TNK-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0'),
+        seri_out: 1,
+        jenis_isi: 'PREMIUM GASOLINE',
+        kapasitas: 25000,
+        jumlah_isi: 20000,
+        satuan: 'LITER',
+        kondisi: 'BAIK',
+        no_bl_awb: 'BL-DUMMY-' + Math.floor(Math.random() * 1000),
+        tgl_bl_awb: new Date().toISOString().split('T')[0],
+        consignee: 'PT TEST DATA SEJAHTERA',
+        id_consignee: '12.345.678.9-123.000',
+        no_bc11: '000123',
+        tgl_bc11: new Date().toISOString().split('T')[0],
+        no_pos_bc11: '0001',
+        kd_dok_inout: firstDokInout,
+        no_dok_inout: 'DUM-LALIN-001',
+        tgl_dok_inout: new Date().toISOString().split('T')[0],
+        kd_sar_angkut_inout: 'LAND',
+        no_pol: 'B 1234 TEST',
+        jenis_kemasan: 'BULK',
+        jml_satuan: 1,
+        jns_satuan: 'DRM',
+        panjang: 6,
+        lebar: 2.5,
+        tinggi: 2.5,
+        berat_kosong: 6000,
+        berat_isi: 26000,
+        keterangan: 'DUMMY TESTING',
+        tgl_produksi: new Date().toISOString().split('T')[0],
+        tgl_expired: new Date().toISOString().split('T')[0],
+        no_segel_bc: 'BC-001',
+        no_segel_perusahaan: 'PR-001',
+        lokasi_penempatan: 'ZONE-A1',
+        wk_inout: new Date().toISOString().slice(0, 16),
+        pel_muat: 'IDTPP',
+        pel_transit: 'IDTPP',
+        pel_bongkar: 'IDTPP',
+        no_dok_ijin_tps: 'IJIN-001',
+        tgl_dok_ijin_tps: new Date().toISOString().split('T')[0],
+      }
+    ];
+    setValue('tangki', dummyTangki);
+    setMessage({ type: 'success', text: 'Form populated with dummy data!' });
+    setTimeout(() => setMessage(null), 3000);
+  };
 
   const setCurrentTime = (field: keyof DocumentFormData) => {
     const now = new Date()
@@ -195,6 +303,8 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
   const filteredKdDok = referenceData.kdDok.filter(d =>
     flowType === 'IN' ? DOK_IN_CODES.includes(d.kd_dok) : DOK_OUT_CODES.includes(d.kd_dok)
   )
+
+  const filteredKdDokInout = referenceData.kdDokInout.filter(d => d.jenis === flowType)
 
   const accentColor = flowType === 'IN' ? 'blue' : 'amber'
   const accentClass = flowType === 'IN' ? 'text-blue-600 border-blue-200' : 'text-amber-600 border-amber-200'
@@ -300,13 +410,50 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
         )}
       </div>
 
-      {message && (
-        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm border ${message.type === 'success'
+      {(message || (serverErrors && Object.keys(serverErrors).length > 0) || (errors && Object.keys(errors).length > 0)) && (
+        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-500 shadow-sm border ${message?.type === 'success'
           ? "bg-emerald-50 text-emerald-800 border-emerald-200"
           : "bg-rose-50 text-rose-800 border-rose-200"
           }`}>
-          {message.type === 'success' ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
-          <span className="text-sm font-semibold">{message.text}</span>
+          {(message?.type === 'success') ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+          <div className="flex flex-col gap-1">
+            {message && <span className="text-sm font-bold border-b border-rose-200 pb-1 mb-1">{message.text}</span>}
+
+            {/* Server Errors (Backend) */}
+            {serverErrors && Object.entries(serverErrors).map(([key, value]) => {
+              const label = FIELD_LABELS[key] || key;
+              return (
+                <div key={`server-${key}`} className="flex items-start gap-2 text-xs">
+                  <span className="font-bold min-w-[100px] text-rose-600">Terjadi Error:</span>
+                  <span className="font-medium text-rose-700">{label}: {value as string}</span>
+                </div>
+              );
+            })}
+
+            {/* Frontend Validation Errors (Zod) */}
+            {errors && Object.entries(errors).map(([key, error]: [string, any]) => {
+              if (key === 'tangki' && Array.isArray(error)) {
+                return error.flatMap((t, idx) =>
+                  Object.entries(t || {}).map(([field, fieldError]: [string, any]) => {
+                    const label = FIELD_LABELS[field] || field;
+                    return (
+                      <div key={`form-tangki-${idx}-${field}`} className="flex items-start gap-2 text-xs">
+                        <span className="font-bold min-w-[100px] text-rose-600">Tangki #{idx + 1}:</span>
+                        <span className="font-medium uppercase text-rose-700">{label} - {fieldError.message}</span>
+                      </div>
+                    )
+                  })
+                )
+              }
+              const label = FIELD_LABELS[key] || key;
+              return (
+                <div key={`form-${key}`} className="flex items-start gap-2 text-xs">
+                  <span className="font-bold min-w-[100px] text-rose-600">Form Header:</span>
+                  <span className="font-medium uppercase text-rose-700">{label} - {error.message}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -363,7 +510,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   <Label htmlFor="kd_dok" className="text-sm font-semibold">Kode Dokumen *</Label>
                   <select
                     {...register('kd_dok')}
-                    className={`flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:outline-none dark:border-slate-800 dark:bg-slate-950 shadow-sm transition-all ${ringClass}`}
+                    className={`flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-2 text-sm focus:ring-2 focus:outline-none dark:border-slate-800 dark:bg-slate-950 shadow-sm transition-all ${ringClass}`}
                   >
                     <option value="">Pilih Kode Dokumen</option>
                     {filteredKdDok.map((item) => (
@@ -378,7 +525,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   <Label htmlFor="kd_tps" className="text-sm font-semibold">Kode TPS *</Label>
                   <select
                     {...register('kd_tps')}
-                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 shadow-sm transition-all"
+                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 shadow-sm transition-all"
                   >
                     <option value="">Pilih Kode TPS</option>
                     {referenceData.kdTps.map((item) => (
@@ -393,7 +540,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   <Label htmlFor="nm_angkut_id" className="text-sm font-semibold">Nama Angkutan *</Label>
                   <select
                     {...register('nm_angkut_id')}
-                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 shadow-sm transition-all"
+                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 shadow-sm transition-all"
                   >
                     <option value="">Pilih Nama Angkutan</option>
                     {referenceData.nmAngkut.map((item) => (
@@ -430,15 +577,17 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="no_voy_flight" className="text-sm font-semibold">No. VOY/Flight</Label>
+                  <Label htmlFor="no_voy_flight" className="text-sm font-semibold">No. VOY/Flight *</Label>
                   <Input {...register('no_voy_flight')} placeholder="EX: VOY-123" className="rounded-lg shadow-sm" />
+                  {errors.no_voy_flight && <p className="text-xs text-rose-500">{errors.no_voy_flight.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Tanggal Tiba (Estimasi)</Label>
+                  <Label className="text-sm font-semibold">Tanggal Tiba (Estimasi) *</Label>
                   <div className="flex gap-2">
                     <Input type="date" {...register('tgl_tiba')} className={`rounded-lg flex-1 ${ringClass}`} />
                     <Button type="button" size="icon" variant="outline" onClick={() => setCurrentTime('tgl_tiba')} className="shrink-0"><Calendar className="w-4 h-4" /></Button>
                   </div>
+                  {errors.tgl_tiba && <p className="text-xs text-rose-500">{errors.tgl_tiba.message}</p>}
                 </div>
                 <div className="md:col-span-2 space-y-2">
                   <Label htmlFor="keterangan" className="text-sm font-semibold">Keterangan Dokumen</Label>
@@ -462,15 +611,23 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
               </div>
 
               <div className="flex items-center gap-2">
+
+
                 <Button
                   type="button"
-                  variant="ghost"
-                  className="h-10 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-white transition-colors px-4"
-                  onClick={() => window.open('/documents/template/download', '_blank')}
+                  variant="outline"
+                  className="h-10 text-[10px] font-black uppercase tracking-wider text-rose-500 border-rose-200 hover:bg-rose-50 transition-all px-4 rounded-xl"
+                  onClick={fillDummyData}
                 >
-                  <Download className="w-4 h-4 mr-2" />
-                  Template
+                  Testing (Fill Dummy)
                 </Button>
+
+                <GradientButton
+                  label="Template"
+                  href="/documents/template/download"
+                  target="_blank"
+                />
+
 
                 <Button
                   type="button"
@@ -558,7 +715,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     {/* Basic Info */}
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">No. Tangki *</Label>
-                      <Input {...register(`tangki.${index}.no_tangki` as const)} className="rounded-lg bg-slate-50/50 focus:bg-white" />
+                      <Input {...register(`tangki.${index}.no_tangki` as const)} className="rounded-lg bg-slate-50/50 focus:bg-purple-500" />
                       {errors.tangki?.[index]?.no_tangki && <p className="text-[11px] text-rose-500 font-medium">{errors.tangki[index].no_tangki.message}</p>}
                     </div>
                     <div className="space-y-2">
@@ -567,11 +724,11 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">Jenis Isi *</Label>
-                      <Input {...register(`tangki.${index}.jenis_isi` as const)} className="rounded-lg bg-slate-50/50 focus:bg-white" />
+                      <Input {...register(`tangki.${index}.jenis_isi` as const)} className="rounded-lg bg-slate-50/50 focus:bg-purple-500" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">Kondisi</Label>
-                      <select {...register(`tangki.${index}.kondisi` as const)} className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 transition-all">
+                      <select {...register(`tangki.${index}.kondisi` as const)} className="flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 transition-all">
                         <option value="BAIK">BAIK</option>
                         <option value="RUSAK">RUSAK</option>
                         <option value="BOCOR">BOCOR</option>
@@ -589,7 +746,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">Satuan Utama</Label>
-                      <select {...register(`tangki.${index}.satuan` as const)} className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 transition-all">
+                      <select {...register(`tangki.${index}.satuan` as const)} className="flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 transition-all">
                         <option value="LITER">LITER</option>
                         <option value="KGM">KGM</option>
                         <option value="M3">M3</option>
@@ -647,8 +804,18 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
                     {/* Documents In/Out */}
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Kd. Dok Lalin</Label>
-                      <Input {...register(`tangki.${index}.kd_dok_inout` as const)} readOnly className="bg-slate-50 font-bold" />
+                      <Label className="text-xs font-bold uppercase text-slate-500">Kd. Dok Lalin *</Label>
+                      <select
+                        {...register(`tangki.${index}.kd_dok_inout` as const)}
+                        className={`flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 transition-all ${ringClass}`}
+                      >
+                        <option value="">Pilih Kode</option>
+                        {filteredKdDokInout.map((item) => (
+                          <option key={item.kd_dok_inout} value={item.kd_dok_inout}>
+                            {item.kd_dok_inout} - {item.nm_dok_inout}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">No. Dok Lalin</Label>
@@ -660,7 +827,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">Sarana Angkut</Label>
-                      <select {...register(`tangki.${index}.kd_sar_angkut_inout` as const)} className={`flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-1 text-sm focus:ring-2 transition-all ${ringClass}`}>
+                      <select {...register(`tangki.${index}.kd_sar_angkut_inout` as const)} className={`flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-1 text-sm focus:ring-2 transition-all ${ringClass}`}>
                         <option value="LAND">DARAT (TRUK)</option>
                         <option value="SEA">LAUT (KAPAL)</option>
                         <option value="PIPE">PIPA</option>
@@ -733,6 +900,16 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                       <Input {...register(`tangki.${index}.no_segel_perusahaan` as const)} className="rounded-lg" />
                     </div>
 
+                    {/* TPS Permit Data */}
+                    <div className="space-y-2 lg:col-span-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500 text-blue-500">No. Dok Ijin TPS (Impor : Nomor SP2; Ekspor : Kartu Ekspor)</Label>
+                      <Input {...register(`tangki.${index}.no_dok_ijin_tps` as const)} className="rounded-lg border-blue-200 focus:border-blue-400" placeholder="KEP-..." />
+                    </div>
+                    <div className="space-y-2 lg:col-span-2">
+                      <Label className="text-xs font-bold uppercase text-slate-500 text-blue-500">Tgl. Dok Ijin TPS (yyyymmdd) (Impor : Tgl. SP2; Ekspor : Tgl. Kartu Ekspor)</Label>
+                      <Input type="date" {...register(`tangki.${index}.tgl_dok_ijin_tps` as const)} className="rounded-lg border-blue-200 focus:border-blue-400" />
+                    </div>
+
                     {/* Location & Links */}
                     <div className="space-y-2 lg:col-span-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">Lokasi Penempatan</Label>
@@ -778,7 +955,10 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">Jam. Entry *</Label>
-                    <Input type="time" {...register('jam_entry')} className={`rounded-lg ${ringClass}`} />
+                    <div className="flex gap-2">
+                      <Input type="time" step="1" {...register('jam_entry')} className={`rounded-lg flex-1 ${ringClass}`} />
+                      <Button type="button" size="icon" variant="outline" onClick={() => setCurrentTime('jam_entry')} className="shrink-0"><Clock className="w-4 h-4" /></Button>
+                    </div>
                   </div>
                 </div>
 
@@ -814,7 +994,10 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Jam. Gate In</Label>
-                        <Input type="time" {...register('jam_gate_in')} className={`rounded-lg ${ringClass}`} />
+                        <div className="flex gap-2">
+                          <Input type="time" step="1" {...register('jam_gate_in')} className={`rounded-lg flex-1 ${ringClass}`} />
+                          <Button type="button" size="icon" variant="outline" onClick={() => setCurrentTime('jam_gate_in')} className="h-10 w-10 shrink-0"><Clock className="w-4 h-4" /></Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -840,7 +1023,10 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Jam. Gate Out</Label>
-                        <Input type="time" {...register('jam_gate_out')} className={`rounded-lg ${ringClass}`} />
+                        <div className="flex gap-2">
+                          <Input type="time" step="1" {...register('jam_gate_out')} className={`rounded-lg flex-1 ${ringClass}`} />
+                          <Button type="button" size="icon" variant="outline" onClick={() => setCurrentTime('jam_gate_out')} className="h-10 w-10 shrink-0"><Clock className="w-4 h-4" /></Button>
+                        </div>
                       </div>
                     </div>
                   </div>
