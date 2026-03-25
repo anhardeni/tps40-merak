@@ -133,7 +133,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/beacukai-credentials/{beacukaiCredential}', [\App\Http\Controllers\Admin\BeacukaiCredentialController::class, 'destroy'])->name('admin.beacukai-credentials.destroy');
         Route::post('/beacukai-credentials/{beacukaiCredential}/test', [\App\Http\Controllers\Admin\BeacukaiCredentialController::class, 'test'])->name('admin.beacukai-credentials.test');
     });        // Reference Data Routes (Requires manage.references permission)
-    Route::prefix('reference')->middleware('permission:manage.references')->group(function () {
+    Route::prefix('reference')->name('reference.')->middleware('permission:manage.references')->group(function () {
         // Kode Dokumen
         Route::resource('kd-dok', \App\Http\Controllers\Reference\KdDokController::class);
 
@@ -172,7 +172,7 @@ Route::middleware('auth')->group(function () {
                     ],
                 ],
             ]);
-        })->name('reference.nm-angkut.index');
+        })->name('nm-angkut.index');
     });
 
     // Settings Routes

@@ -15,8 +15,8 @@ import { ArrowRightLeft, Calendar, LogIn, LogOut } from "lucide-react"
 import GradientButton from "@/Components/ui/gradient-button";
 
 // Document code mapping for context-aware filtering
-const DOK_IN_CODES = ['1', '2', '6', '8', '9']
-const DOK_OUT_CODES = ['3', '4', '5', '7']
+const DOK_IN_CODES = ['1', '3', '5', '6']
+const DOK_OUT_CODES = ['2', '4', '7', '8', '9']
 
 // Human readable labels for error mapping
 const FIELD_LABELS: Record<string, string> = {
@@ -116,6 +116,7 @@ interface DocumentFormProps {
     nmAngkut: Array<{ id: number; nm_angkut: string; call_sign?: string }>
     kdGudang: Array<{ kd_gudang: string; nm_gudang: string; kd_tps?: string }>
     kdDokInout: Array<{ kd_dok_inout: string; nm_dok_inout: string; jenis: string }>
+    tangkiList?: string[]
   }
   onSubmit: (data: DocumentFormData) => void
   isLoading?: boolean
@@ -722,12 +723,34 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                     {/* Basic Info */}
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">No. Tangki *</Label>
-                      <Input {...register(`tangki.${index}.no_tangki` as const)} className="rounded-lg bg-slate-50/50 focus:bg-purple-500" />
+                      <Input 
+                        list={`tangkis-${index}`} 
+                        {...register(`tangki.${index}.no_tangki` as const)} 
+                        className="rounded-lg bg-slate-50/50 focus:bg-purple-500" 
+                        placeholder="Pilih atau ketik baru..."
+                      />
+                      <datalist id={`tangkis-${index}`}>
+                        {referenceData.tangkiList?.map((t: string) => (
+                          <option key={t} value={t} />
+                        ))}
+                      </datalist>
                       {errors.tangki?.[index]?.no_tangki && <p className="text-[11px] text-rose-500 font-medium">{errors.tangki[index].no_tangki.message}</p>}
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Seri Out (Lalin)</Label>
-                      <Input type="number" {...register(`tangki.${index}.seri_out` as const)} className="rounded-lg" />
+                      <Label className="text-xs font-bold uppercase text-slate-500">Seri Out (Oto)</Label>
+                      <Input 
+                        type="number" 
+                        value={
+                          watch('tangki')?.slice(0, index + 1).filter((t: any) => 
+                            t.no_bl_awb && 
+                            t.no_bl_awb === watch(`tangki.${index}.no_bl_awb`) && 
+                            t.tgl_bl_awb === watch(`tangki.${index}.tgl_bl_awb`)
+                          ).length || 1
+                        }
+                        readOnly
+                        tabIndex={-1}
+                        className="rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed font-mono font-bold" 
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase text-slate-500">Jenis Isi *</Label>

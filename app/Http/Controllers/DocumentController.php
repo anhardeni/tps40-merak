@@ -177,15 +177,15 @@ class DocumentController extends Controller
                 'updated_by' => auth()->id(),
             ]);
 
-            // Create tangki with auto seri_out generation
+            // Create tangki with auto seri_out generation based on BL and Date
+            $blCounters = [];
             foreach ($validated['tangki'] as $tangkiData) {
-                // Auto-generate seri_out if not provided
-                if (! isset($tangkiData['seri_out'])) {
-                    $maxSeri = $document->tangki()
-                        ->where('no_tangki', $tangkiData['no_tangki'])
-                        ->max('seri_out');
-                    $tangkiData['seri_out'] = ($maxSeri ?? 0) + 1;
+                $blKey = ($tangkiData['no_bl_awb'] ?? '') . '|' . ($tangkiData['tgl_bl_awb'] ?? '');
+                if (!isset($blCounters[$blKey])) {
+                    $blCounters[$blKey] = 0;
                 }
+                $blCounters[$blKey]++;
+                $tangkiData['seri_out'] = $blCounters[$blKey];
 
                 $document->tangki()->create($tangkiData);
             }
@@ -322,16 +322,16 @@ class DocumentController extends Controller
                 'keterangan' => $validated['keterangan'],
             ]);
 
-            // Delete existing tangki and recreate with auto seri_out
+            // Delete existing tangki and recreate with auto seri_out based on BL and Date
             $document->tangki()->delete();
+            $blCounters = [];
             foreach ($validated['tangki'] as $tangkiData) {
-                // Auto-generate seri_out if not provided
-                if (! isset($tangkiData['seri_out'])) {
-                    $maxSeri = $document->tangki()
-                        ->where('no_tangki', $tangkiData['no_tangki'])
-                        ->max('seri_out');
-                    $tangkiData['seri_out'] = ($maxSeri ?? 0) + 1;
+                $blKey = ($tangkiData['no_bl_awb'] ?? '') . '|' . ($tangkiData['tgl_bl_awb'] ?? '');
+                if (!isset($blCounters[$blKey])) {
+                    $blCounters[$blKey] = 0;
                 }
+                $blCounters[$blKey]++;
+                $tangkiData['seri_out'] = $blCounters[$blKey];
 
                 $document->tangki()->create($tangkiData);
             }
@@ -484,13 +484,18 @@ class DocumentController extends Controller
         try {
             $createdTangkiIds = [];
             $createdTangkiRows = [];
+            $blCounters = [];
             foreach ($validated['tangki'] as $tangkiData) {
-                if (! isset($tangkiData['seri_out']) || empty($tangkiData['seri_out'])) {
+                $blKey = ($tangkiData['no_bl_awb'] ?? '') . '|' . ($tangkiData['tgl_bl_awb'] ?? '');
+                if (!isset($blCounters[$blKey])) {
                     $maxSeri = $document->tangki()
-                        ->where('no_tangki', $tangkiData['no_tangki'])
+                        ->where('no_bl_awb', $tangkiData['no_bl_awb'] ?? '')
+                        ->where('tgl_bl_awb', $tangkiData['tgl_bl_awb'] ?? '')
                         ->max('seri_out');
-                    $tangkiData['seri_out'] = ($maxSeri ?? 0) + 1;
+                    $blCounters[$blKey] = $maxSeri ?? 0;
                 }
+                $blCounters[$blKey]++;
+                $tangkiData['seri_out'] = $blCounters[$blKey];
 
                 $created = $document->tangki()->create($tangkiData);
                 $createdTangkiIds[] = $created->id;
@@ -699,10 +704,16 @@ class DocumentController extends Controller
                 if (empty($tangkiData['no_tangki'])) continue;
 
                 // Auto-generate seri_out
-                $maxSeri = $document->tangki()
-                    ->where('no_tangki', $tangkiData['no_tangki'])
-                    ->max('seri_out');
-                $tangkiData['seri_out'] = ($maxSeri ?? 0) + 1;
+                $blKey = ($tangkiData['no_bl_awb'] ?? '') . '|' . ($tangkiData['tgl_bl_awb'] ?? '');
+                if (!isset($blCounters[$blKey])) {
+                    $maxSeri = $document->tangki()
+                        ->where('no_bl_awb', $tangkiData['no_bl_awb'] ?? '')
+                        ->where('tgl_bl_awb', $tangkiData['tgl_bl_awb'] ?? '')
+                        ->max('seri_out');
+                    $blCounters[$blKey] = $maxSeri ?? 0;
+                }
+                $blCounters[$blKey]++;
+                $tangkiData['seri_out'] = $blCounters[$blKey];
 
                 $document->tangki()->create($tangkiData);
                 $count++;
@@ -784,6 +795,11 @@ class DocumentController extends Controller
             'kdDokInout' => KdDokInout::select('kd_dok_inout', 'nm_dok_inout', 'jenis')->where('is_active', true)->get(),
             'jenisSatuan' => ReferensiJenisSatuan::select('kode_satuan_barang', 'nama_satuan_barang')->get(),
             'jenisKemasan' => ReferensiJenisKemasan::select('kode_jenis_kemasan', 'nama_jenis_kemasan')->get(),
+            'tangkiList' => \App\Models\Tangki::select('no_tangki')
+                ->whereNotNull('no_tangki')
+                ->where('no_tangki', '!=', '')
+                ->distinct()
+                ->pluck('no_tangki'),
         ];
     }
 
