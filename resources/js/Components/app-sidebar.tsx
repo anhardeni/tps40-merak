@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { dashboard } from '@/routes';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Activity, BookOpen, FileText, Folder, LayoutGrid, TestTube, FileWarning, Users, Shield, Settings, Database, PanelLeft, Key } from 'lucide-react';
+import { Activity, BookOpen, FileText, Folder, LayoutGrid, TestTube, FileWarning, Users, Shield, Settings, Database, PanelLeft, Key, MapPin } from 'lucide-react';
 import AppLogoIcon from './app-logo-icon';
 
 const mainNavItems: NavItem[] = [
@@ -95,6 +95,11 @@ const adminNavItems: NavItem[] = [
         title: 'Permissions',
         href: '/admin/permissions',
         icon: Key,
+    },
+    {
+        title: 'Location Permissions',
+        href: '/admin/user-location-access',
+        icon: MapPin,
     },
 ];
 

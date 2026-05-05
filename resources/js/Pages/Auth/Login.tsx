@@ -36,7 +36,7 @@ export default function Login({
             {/* Animated Background */}
             <div className="fixed inset-0 -z-10" style={{ width: '100vw', height: '100vh' }}>
                 <ColorBends
-                    colors={['#6366f1', '#475569', '#64748b', '#3b82f6']}
+                    colors={['#C7B496', '#1A1A1A', '#A2A2A2', '#474747']}
                     speed={0.5}
                     autoRotate={0}
                     scale={1}

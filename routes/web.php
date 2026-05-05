@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\LogController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -33,7 +32,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/documents/{document}/submit', [\App\Http\Controllers\DocumentController::class, 'submit'])->name('documents.submit');
     Route::post('/documents/import', [\App\Http\Controllers\DocumentController::class, 'import'])->name('documents.import');
     Route::get('/documents/template/download', [\App\Http\Controllers\DocumentController::class, 'downloadTemplate'])->name('documents.download-template');
-
+    Route::get('/documents/{document}/add-tangki', [\App\Http\Controllers\DocumentController::class, 'addTangkiPage'])->name('documents.add-tangki');
+    Route::post('/documents/{document}/append-tangki', [\App\Http\Controllers\DocumentController::class, 'appendTangki'])->name('documents.append-tangki');
     // Export Routes - Preview and Download XML/JSON
     Route::prefix('api/export')->name('export.')->group(function () {
         // XML exports - available for all authenticated users
@@ -78,11 +78,9 @@ Route::middleware('auth')->group(function () {
     });
 
     // Logs Routes
-    Route::get('/logs', [LogController::class, 'index'])->name('logs.index');
-
-    Route::get('/logs/errors', [LogController::class, 'errors'])->name('logs.errors');
-
-    Route::get('/logs/soap', [LogController::class, 'soapLogs'])->name('logs.soap');
+    Route::get('/logs', [\App\Http\Controllers\LogController::class, 'index'])->name('logs.index');
+    Route::get('/logs/errors', [\App\Http\Controllers\LogController::class, 'errors'])->name('logs.errors');
+    Route::get('/logs/soap', [\App\Http\Controllers\LogController::class, 'soapLogs'])->name('logs.soap');
 
     // Admin Routes (Requires manage.users permission)
     Route::prefix('admin')->middleware('permission:manage.users')->group(function () {
@@ -132,8 +130,13 @@ Route::middleware('auth')->group(function () {
         Route::put('/beacukai-credentials/{beacukaiCredential}', [\App\Http\Controllers\Admin\BeacukaiCredentialController::class, 'update'])->name('admin.beacukai-credentials.update');
         Route::delete('/beacukai-credentials/{beacukaiCredential}', [\App\Http\Controllers\Admin\BeacukaiCredentialController::class, 'destroy'])->name('admin.beacukai-credentials.destroy');
         Route::post('/beacukai-credentials/{beacukaiCredential}/test', [\App\Http\Controllers\Admin\BeacukaiCredentialController::class, 'test'])->name('admin.beacukai-credentials.test');
+
+        // User Location Access Management
+        Route::get('/user-location-access', [\App\Http\Controllers\Admin\UserLocationAccessController::class, 'index'])->name('admin.user-location-access.index');
+        Route::post('/user-location-access', [\App\Http\Controllers\Admin\UserLocationAccessController::class, 'store'])->name('admin.user-location-access.store');
+        Route::delete('/user-location-access/{id}', [\App\Http\Controllers\Admin\UserLocationAccessController::class, 'destroy'])->name('admin.user-location-access.destroy');
     });        // Reference Data Routes (Requires manage.references permission)
-    Route::prefix('reference')->name('reference.')->middleware('permission:manage.references')->group(function () {
+    Route::prefix('reference')->middleware('permission:manage.references')->group(function () {
         // Kode Dokumen
         Route::resource('kd-dok', \App\Http\Controllers\Reference\KdDokController::class);
 
@@ -172,7 +175,7 @@ Route::middleware('auth')->group(function () {
                     ],
                 ],
             ]);
-        })->name('nm-angkut.index');
+        })->name('reference.nm-angkut.index');
     });
 
     // Settings Routes

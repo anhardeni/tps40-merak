@@ -4,18 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Document;
 use App\Models\KdDok;
-use App\Models\KdDokInout;
 use App\Models\KdGudang;
 use App\Models\KdTps;
 use App\Models\NmAngkut;
-use App\Models\ReferensiJenisSatuan;
-use App\Models\ReferensiJenisKemasan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Inertia\Inertia;
-use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TangkiImport;
+use App\Models\KdDokInout;
+use App\Models\Tangki;
+use Inertia\Inertia;
 
 class DocumentController extends Controller
 {
@@ -49,12 +48,13 @@ class DocumentController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Date filter (by created_at) - default to last 6 months if not specified
-        $dateFrom = $request->date_from ?? now()->subMonths(6)->format('Y-m-d');
-        $dateTo = $request->date_to ?? now()->format('Y-m-d');
-        
-        $query->whereDate('created_at', '>=', $dateFrom)
-              ->whereDate('created_at', '<=', $dateTo);
+        // Date filter
+        if ($request->date_from) {
+            $query->whereDate('tgl_entry', '>=', $request->date_from);
+        }
+        if ($request->date_to) {
+            $query->whereDate('tgl_entry', '<=', $request->date_to);
+        }
 
         $documents = $query->orderBy('created_at', 'desc')
             ->paginate(15)
@@ -78,10 +78,7 @@ class DocumentController extends Controller
                     'next' => $documents->nextPageUrl(),
                 ],
             ],
-            'filters' => array_merge($request->only(['search', 'status']), [
-                'date_from' => $dateFrom,
-                'date_to' => $dateTo,
-            ]),
+            'filters' => $request->only(['search', 'status', 'date_from', 'date_to']),
         ]);
     }
 
@@ -107,179 +104,35 @@ class DocumentController extends Controller
             'kd_gudang' => ['required', 'string', 'exists:kd_gudang,kd_gudang'],
             'no_voy_flight' => ['nullable', 'string', 'max:50'],
             'tgl_entry' => ['required', 'date'],
-            'tgl_tiba' => ['required', 'date'],
+            'tgl_tiba' => ['nullable', 'date'],
             'jam_entry' => ['required', 'string'],
             'tgl_gate_in' => ['nullable', 'date'],
             'jam_gate_in' => ['nullable', 'string'],
             'tgl_gate_out' => ['nullable', 'date'],
             'jam_gate_out' => ['nullable', 'string'],
             'keterangan' => ['nullable', 'string'],
+            'no_dok_ijin_tps' => ['nullable', 'string', 'max:35'],
+            'tgl_dok_ijin_tps' => ['nullable', 'date'],
             'tangki' => ['required', 'array', 'min:1'],
-            'tangki.*.kd_dok_inout' => ['required', 'string', 'exists:kd_dok_inout,kd_dok_inout'],
             'tangki.*.no_tangki' => ['required', 'string', 'max:50'],
-            'tangki.*.seri_out' => ['required', 'integer', 'min:1'],
-            'tangki.*.no_bl_awb' => ['required', 'string', 'max:50'],
-            'tangki.*.tgl_bl_awb' => ['required', 'date'],
-            'tangki.*.id_consignee' => ['required', 'string', 'max:50'],
-            'tangki.*.consignee' => ['required', 'string', 'max:200'],
-            'tangki.*.no_bc11' => ['required', 'string', 'max:6'],
-            'tangki.*.tgl_bc11' => ['required', 'date'],
-            'tangki.*.no_pos_bc11' => ['required', 'string', 'max:12'],
-            'tangki.*.no_pol' => ['required', 'string', 'max:20'],
-            'tangki.*.jenis_isi' => ['required', 'string', 'max:200'],
-            'tangki.*.jenis_kemasan' => ['nullable', 'string', 'max:25'],
-            'tangki.*.jml_satuan' => ['required', 'numeric', 'min:0'],
-            'tangki.*.jns_satuan' => ['required', 'string', 'max:10'],
-            'tangki.*.kapasitas' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.jumlah_isi' => ['required', 'numeric', 'min:0'],
-            'tangki.*.satuan' => ['required', 'string', 'max:10'],
-            'tangki.*.panjang' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.lebar' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.tinggi' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.berat_kosong' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.berat_isi' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.kondisi' => ['required', 'string', 'in:BAIK,RUSAK,BOCOR'],
-            'tangki.*.keterangan' => ['nullable', 'string'],
-            'tangki.*.tgl_produksi' => ['nullable', 'date'],
-            'tangki.*.tgl_expired' => ['nullable', 'date'],
-            'tangki.*.no_segel_bc' => ['nullable', 'string', 'max:50'],
-            'tangki.*.no_segel_perusahaan' => ['nullable', 'string', 'max:50'],
-            'tangki.*.lokasi_penempatan' => ['nullable', 'string', 'max:100'],
-            'tangki.*.wk_inout' => ['required', 'string', 'max:50'],
-            'tangki.*.pel_muat' => ['required', 'string', 'max:10'],
-            'tangki.*.pel_transit' => ['nullable', 'string', 'max:10'],
-            'tangki.*.pel_bongkar' => ['required', 'string', 'max:10'],
-            'tangki.*.no_dok_ijin_tps' => ['required', 'string', 'max:35'],
-            'tangki.*.tgl_dok_ijin_tps' => ['required', 'date'],
-        ]);
-
-        DB::beginTransaction();
-        try {
-            // Create document
-            $document = Document::create([
-                'ref_number' => Document::generateRefNumber(),
-                'kd_dok' => $validated['kd_dok'],
-                'kd_tps' => $validated['kd_tps'],
-                'nm_angkut_id' => $validated['nm_angkut_id'],
-                'kd_gudang' => $validated['kd_gudang'],
-                'no_voy_flight' => $validated['no_voy_flight'],
-                'tgl_entry' => $validated['tgl_entry'],
-                'tgl_tiba' => $validated['tgl_tiba'],
-                'jam_entry' => $validated['jam_entry'],
-                'tgl_gate_in' => $validated['tgl_gate_in'],
-                'jam_gate_in' => $validated['jam_gate_in'],
-                'tgl_gate_out' => $validated['tgl_gate_out'],
-                'jam_gate_out' => $validated['jam_gate_out'],
-                'keterangan' => $validated['keterangan'],
-                'status' => 'DRAFT',
-                'username' => auth()->user()->name ?? 'system',
-                'created_by' => auth()->id(),
-                'updated_by' => auth()->id(),
-            ]);
-
-            // Create tangki with auto seri_out generation based on BL and Date
-            $blCounters = [];
-            foreach ($validated['tangki'] as $tangkiData) {
-                $blKey = ($tangkiData['no_bl_awb'] ?? '') . '|' . ($tangkiData['tgl_bl_awb'] ?? '');
-                if (!isset($blCounters[$blKey])) {
-                    $blCounters[$blKey] = 0;
-                }
-                $blCounters[$blKey]++;
-                $tangkiData['seri_out'] = $blCounters[$blKey];
-
-                $document->tangki()->create($tangkiData);
-            }
-
-            DB::commit();
-
-            return redirect()->route('documents.show', $document)
-                ->with('success', 'Dokumen berhasil dibuat.');
-
-        } catch (\Throwable $e) {
-            DB::rollback();
-
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan dokumen: '.$e->getMessage()]);
-        }
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(Document $document)
-    {
-        $document->load(['nmAngkut', 'tangki']);
-
-        return Inertia::render('Documents/Show', [
-            'document' => $document,
-            'kdDokInout' => \App\Models\KdDokInout::select('kd_dok_inout', 'nm_dok_inout', 'jenis')->where('is_active', true)->get(),
-            'jenisSatuan' => ReferensiJenisSatuan::select('kode_satuan_barang', 'nama_satuan_barang')->get(),
-            'jenisKemasan' => ReferensiJenisKemasan::select('kode_jenis_kemasan', 'nama_jenis_kemasan')->get(),
-        ]);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Document $document)
-    {
-        // Allow editing when the document is still a draft or when it's already submitted
-        // (quick change to permit adding tangki and re-submitting). This relaxes the
-        // previous restriction which allowed only DRAFT.
-        if (! in_array(strtoupper($document->status), ['DRAFT', 'SUBMITTED'])) {
-            return redirect()->route('documents.show', $document)
-                ->with('error', 'Dokumen hanya dapat diedit jika statusnya masih Draft atau Submitted.');
-        }
-
-        $document->load(['nmAngkut', 'tangki']);
-
-        return Inertia::render('Documents/Edit', [
-            'document' => $document,
-            'referenceData' => $this->getReferenceData(),
-        ]);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Document $document)
-    {
-        // Allow updating if status is DRAFT or SUBMITTED (quick change to permit edits
-        // after submission). In a stricter workflow you might prefer RETURNED/AMEND flow.
-        if (! in_array(strtoupper($document->status), ['DRAFT', 'SUBMITTED'])) {
-            return redirect()->route('documents.show', $document)
-                ->with('error', 'Dokumen hanya dapat diupdate jika statusnya masih Draft atau Submitted.');
-        }
-
-        $validated = $request->validate([
-            'kd_dok' => ['required', 'string', 'exists:kd_dok,kd_dok'],
-            'kd_tps' => ['required', 'string', 'exists:kd_tps,kd_tps'],
-            'nm_angkut_id' => ['required', 'integer', 'exists:nm_angkut,id'],
-            'kd_gudang' => ['required', 'string', 'exists:kd_gudang,kd_gudang'],
-            'no_voy_flight' => ['required', 'string', 'max:50'],
-            'tgl_entry' => ['required', 'date'],
-            'tgl_tiba' => ['required', 'date'],
-            'jam_entry' => ['required', 'string'],
-            'tgl_gate_in' => ['nullable', 'date'],
-            'jam_gate_in' => ['nullable', 'string'],
-            'tgl_gate_out' => ['nullable', 'date'],
-            'jam_gate_out' => ['nullable', 'string'],
-            'keterangan' => ['nullable', 'string'],
-            'tangki' => ['required', 'array', 'min:1'],
-            'tangki.*.kd_dok_inout' => ['required', 'string', 'exists:kd_dok_inout,kd_dok_inout'],
-            'tangki.*.no_tangki' => ['required', 'string', 'max:50'],
-            'tangki.*.seri_out' => ['required', 'integer', 'min:1'],
-            'tangki.*.no_bl_awb' => ['required', 'string', 'max:50'],
-            'tangki.*.tgl_bl_awb' => ['required', 'date'],
-            'tangki.*.id_consignee' => ['required', 'string', 'max:50'],
-            'tangki.*.consignee' => ['required', 'string', 'max:200'],
-            'tangki.*.no_bc11' => ['required', 'string', 'max:50'],
-            'tangki.*.tgl_bc11' => ['required', 'date'],
-            'tangki.*.no_pos_bc11' => ['required', 'string', 'max:10'],
-            'tangki.*.no_pol' => ['required', 'string', 'max:20'],
+            'tangki.*.no_bl_awb' => ['nullable', 'string', 'max:50'],
+            'tangki.*.tgl_bl_awb' => ['nullable', 'date'],
+            'tangki.*.id_consignee' => ['nullable', 'string', 'max:50'],
+            'tangki.*.consignee' => ['nullable', 'string', 'max:200'],
+            'tangki.*.no_bc11' => ['nullable', 'string', 'max:50'],
+            'tangki.*.tgl_bc11' => ['nullable', 'date'],
+            'tangki.*.no_pos_bc11' => ['nullable', 'string', 'max:12'],
+            'tangki.*.jml_satuan' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.jns_satuan' => ['nullable', 'string', 'max:10'],
+            'tangki.*.kd_dok_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_dok_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.tgl_dok_inout' => ['nullable', 'date'],
+            'tangki.*.kd_sar_angkut_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_pol' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_dok_ijin_tps' => ['nullable', 'string', 'max:35'],
+            'tangki.*.tgl_dok_ijin_tps' => ['nullable', 'date'],
             'tangki.*.jenis_isi' => ['required', 'string', 'max:200'],
             'tangki.*.jenis_kemasan' => ['nullable', 'string', 'max:100'],
-            'tangki.*.jml_satuan' => ['required', 'numeric', 'min:0'],
-            'tangki.*.jns_satuan' => ['required', 'string', 'max:10'],
             'tangki.*.kapasitas' => ['required', 'numeric', 'min:0'],
             'tangki.*.jumlah_isi' => ['required', 'numeric', 'min:0'],
             'tangki.*.satuan' => ['required', 'string', 'max:10'],
@@ -295,13 +148,181 @@ class DocumentController extends Controller
             'tangki.*.no_segel_bc' => ['nullable', 'string', 'max:50'],
             'tangki.*.no_segel_perusahaan' => ['nullable', 'string', 'max:50'],
             'tangki.*.lokasi_penempatan' => ['nullable', 'string', 'max:100'],
-            'tangki.*.wk_inout' => ['required', 'string', 'max:50'],
-            'tangki.*.pel_muat' => ['required', 'string', 'max:10'],
+            'tangki.*.wk_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.pel_muat' => ['nullable', 'string', 'max:10'],
             'tangki.*.pel_transit' => ['nullable', 'string', 'max:10'],
-            'tangki.*.pel_bongkar' => ['required', 'string', 'max:10'],
-            'tangki.*.no_dok_ijin_tps' => ['required', 'string', 'max:35'],
-            'tangki.*.tgl_dok_ijin_tps' => ['required', 'date'],
+            'tangki.*.pel_bongkar' => ['nullable', 'string', 'max:10'],
         ]);
+
+        // Backend Authorization Guard
+        $user = auth()->user();
+        if (!$user->hasRole('admin')) {
+            $hasAccess = DB::table('user_location_access')
+                ->where('user_id', $user->id)
+                ->where('kd_tps', $validated['kd_tps'])
+                ->where('kd_gudang', $validated['kd_gudang'])
+                ->exists();
+            
+            if (!$hasAccess) {
+                return back()->withErrors(['kd_tps' => 'Anda tidak memiliki akses ke lokasi TPS/Gudang ini.'])->withInput();
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            // Create document
+            $document = Document::create([
+                'ref_number' => Document::generateRefNumber(),
+                'kd_dok' => $validated['kd_dok'],
+                'kd_tps' => $validated['kd_tps'],
+                'nm_angkut_id' => $validated['nm_angkut_id'],
+                'kd_gudang' => $validated['kd_gudang'],
+                'no_voy_flight' => $validated['no_voy_flight'] ?? null,
+                'tgl_entry' => $validated['tgl_entry'],
+                'tgl_tiba' => $validated['tgl_tiba'] ?? null,
+                'jam_entry' => $validated['jam_entry'],
+                'tgl_gate_in' => $validated['tgl_gate_in'] ?? null,
+                'jam_gate_in' => $validated['jam_gate_in'] ?? null,
+                'tgl_gate_out' => $validated['tgl_gate_out'] ?? null,
+                'jam_gate_out' => $validated['jam_gate_out'] ?? null,
+                'keterangan' => $validated['keterangan'] ?? null,
+                'no_dok_ijin_tps' => $validated['no_dok_ijin_tps'] ?? null,
+                'tgl_dok_ijin_tps' => $validated['tgl_dok_ijin_tps'] ?? null,
+                'status' => 'DRAFT',
+                'username' => auth()->user()->name ?? 'system',
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
+            ]);
+
+            // Create tangki
+            foreach ($validated['tangki'] as $tangkiData) {
+                $document->tangki()->create($tangkiData);
+            }
+
+            DB::commit();
+
+            return redirect()->route('documents.show', $document)
+                ->with('success', 'Dokumen berhasil dibuat.');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            return back()->withErrors(['error' => 'Terjadi kesalahan saat menyimpan dokumen: '.$e->getMessage()]);
+        }
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(Document $document)
+    {
+        $document->load(['nmAngkut', 'tangki']);
+
+        return Inertia::render('Documents/Show', [
+            'document' => $document,
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Document $document)
+    {
+        // Only allow editing if status is DRAFT
+        if (strtoupper($document->status) !== 'DRAFT') {
+            return redirect()->route('documents.show', $document)
+                ->with('error', 'Dokumen hanya dapat diedit jika statusnya masih Draft.');
+        }
+
+        $document->load(['nmAngkut', 'tangki']);
+
+        return Inertia::render('Documents/Edit', [
+            'document' => $document,
+            'referenceData' => $this->getReferenceData(),
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, Document $document)
+    {
+        // Only allow updating if status is DRAFT
+        if (strtoupper($document->status) !== 'DRAFT') {
+            return redirect()->route('documents.show', $document)
+                ->with('error', 'Dokumen hanya dapat diupdate jika statusnya masih Draft.');
+        }
+
+        $validated = $request->validate([
+            'kd_dok' => ['required', 'string', 'exists:kd_dok,kd_dok'],
+            'kd_tps' => ['required', 'string', 'exists:kd_tps,kd_tps'],
+            'nm_angkut_id' => ['required', 'integer', 'exists:nm_angkut,id'],
+            'kd_gudang' => ['required', 'string', 'exists:kd_gudang,kd_gudang'],
+            'no_voy_flight' => ['nullable', 'string', 'max:50'],
+            'tgl_entry' => ['required', 'date'],
+            'tgl_tiba' => ['nullable', 'date'],
+            'jam_entry' => ['required', 'string'],
+            'tgl_gate_in' => ['nullable', 'date'],
+            'jam_gate_in' => ['nullable', 'string'],
+            'tgl_gate_out' => ['nullable', 'date'],
+            'jam_gate_out' => ['nullable', 'string'],
+            'keterangan' => ['nullable', 'string'],
+            'no_dok_ijin_tps' => ['nullable', 'string', 'max:35'],
+            'tgl_dok_ijin_tps' => ['nullable', 'date'],
+            'tangki' => ['required', 'array', 'min:1'],
+            'tangki.*.no_tangki' => ['required', 'string', 'max:50'],
+            'tangki.*.no_bl_awb' => ['nullable', 'string', 'max:50'],
+            'tangki.*.tgl_bl_awb' => ['nullable', 'date'],
+            'tangki.*.id_consignee' => ['nullable', 'string', 'max:50'],
+            'tangki.*.consignee' => ['nullable', 'string', 'max:200'],
+            'tangki.*.no_bc11' => ['nullable', 'string', 'max:50'],
+            'tangki.*.tgl_bc11' => ['nullable', 'date'],
+            'tangki.*.no_pos_bc11' => ['nullable', 'string', 'max:12'],
+            'tangki.*.jml_satuan' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.jns_satuan' => ['nullable', 'string', 'max:10'],
+            'tangki.*.kd_dok_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_dok_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.tgl_dok_inout' => ['nullable', 'date'],
+            'tangki.*.kd_sar_angkut_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_pol' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_dok_ijin_tps' => ['nullable', 'string', 'max:35'],
+            'tangki.*.tgl_dok_ijin_tps' => ['nullable', 'date'],
+            'tangki.*.jenis_isi' => ['required', 'string', 'max:200'],
+            'tangki.*.jenis_kemasan' => ['nullable', 'string', 'max:100'],
+            'tangki.*.kapasitas' => ['required', 'numeric', 'min:0'],
+            'tangki.*.jumlah_isi' => ['required', 'numeric', 'min:0'],
+            'tangki.*.satuan' => ['required', 'string', 'max:10'],
+            'tangki.*.panjang' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.lebar' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.tinggi' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.berat_kosong' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.berat_isi' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.kondisi' => ['required', 'string', 'in:BAIK,RUSAK,BOCOR'],
+            'tangki.*.keterangan' => ['nullable', 'string'],
+            'tangki.*.tgl_produksi' => ['nullable', 'date'],
+            'tangki.*.tgl_expired' => ['nullable', 'date'],
+            'tangki.*.no_segel_bc' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_segel_perusahaan' => ['nullable', 'string', 'max:50'],
+            'tangki.*.lokasi_penempatan' => ['nullable', 'string', 'max:100'],
+            'tangki.*.wk_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.pel_muat' => ['nullable', 'string', 'max:10'],
+            'tangki.*.pel_transit' => ['nullable', 'string', 'max:10'],
+            'tangki.*.pel_bongkar' => ['nullable', 'string', 'max:10'],
+        ]);
+
+        // Backend Authorization Guard
+        $user = auth()->user();
+        if (!$user->hasRole('admin')) {
+            $hasAccess = DB::table('user_location_access')
+                ->where('user_id', $user->id)
+                ->where('kd_tps', $validated['kd_tps'])
+                ->where('kd_gudang', $validated['kd_gudang'])
+                ->exists();
+            
+            if (!$hasAccess) {
+                return back()->withErrors(['kd_tps' => 'Anda tidak memiliki akses ke lokasi TPS/Gudang ini.'])->withInput();
+            }
+        }
 
         DB::beginTransaction();
         try {
@@ -320,19 +341,14 @@ class DocumentController extends Controller
                 'tgl_gate_out' => $validated['tgl_gate_out'],
                 'jam_gate_out' => $validated['jam_gate_out'],
                 'keterangan' => $validated['keterangan'],
+                'no_dok_ijin_tps' => $validated['no_dok_ijin_tps'] ?? null,
+                'tgl_dok_ijin_tps' => $validated['tgl_dok_ijin_tps'] ?? null,
+                'updated_by' => auth()->id(),
             ]);
 
-            // Delete existing tangki and recreate with auto seri_out based on BL and Date
+            // Delete existing tangki and recreate
             $document->tangki()->delete();
-            $blCounters = [];
             foreach ($validated['tangki'] as $tangkiData) {
-                $blKey = ($tangkiData['no_bl_awb'] ?? '') . '|' . ($tangkiData['tgl_bl_awb'] ?? '');
-                if (!isset($blCounters[$blKey])) {
-                    $blCounters[$blKey] = 0;
-                }
-                $blCounters[$blKey]++;
-                $tangkiData['seri_out'] = $blCounters[$blKey];
-
                 $document->tangki()->create($tangkiData);
             }
 
@@ -349,12 +365,85 @@ class DocumentController extends Controller
     }
 
     /**
+     * Show the dedicated page to add tangki to a submitted document.
+     */
+    public function addTangkiPage(Document $document)
+    {
+        $document->load(['tangki']);
+
+        return Inertia::render('Documents/AddTangki', [
+            'document' => $document,
+            'referenceData' => $this->getReferenceData(),
+        ]);
+    }
+
+    /**
+     * Append new tangki records to an existing document.
+     */
+    public function appendTangki(Request $request, Document $document)
+    {
+        $validated = $request->validate([
+            'tangki' => ['required', 'array', 'min:1'],
+            'tangki.*.no_tangki' => ['required', 'string', 'max:50'],
+            'tangki.*.no_bl_awb' => ['nullable', 'string', 'max:50'],
+            'tangki.*.tgl_bl_awb' => ['nullable', 'date'],
+            'tangki.*.id_consignee' => ['nullable', 'string', 'max:50'],
+            'tangki.*.consignee' => ['nullable', 'string', 'max:200'],
+            'tangki.*.no_bc11' => ['nullable', 'string', 'max:50'],
+            'tangki.*.tgl_bc11' => ['nullable', 'date'],
+            'tangki.*.no_pos_bc11' => ['nullable', 'string', 'max:12'],
+            'tangki.*.jml_satuan' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.jns_satuan' => ['nullable', 'string', 'max:10'],
+            'tangki.*.kd_dok_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_dok_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.tgl_dok_inout' => ['nullable', 'date'],
+            'tangki.*.kd_sar_angkut_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_pol' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_dok_ijin_tps' => ['nullable', 'string', 'max:35'],
+            'tangki.*.tgl_dok_ijin_tps' => ['nullable', 'date'],
+            'tangki.*.jenis_isi' => ['required', 'string', 'max:200'],
+            'tangki.*.jenis_kemasan' => ['nullable', 'string', 'max:100'],
+            'tangki.*.kapasitas' => ['required', 'numeric', 'min:0'],
+            'tangki.*.jumlah_isi' => ['required', 'numeric', 'min:0'],
+            'tangki.*.satuan' => ['required', 'string', 'max:10'],
+            'tangki.*.panjang' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.lebar' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.tinggi' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.berat_kosong' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.berat_isi' => ['nullable', 'numeric', 'min:0'],
+            'tangki.*.kondisi' => ['required', 'string', 'in:BAIK,RUSAK,BOCOR'],
+            'tangki.*.keterangan' => ['nullable', 'string'],
+            'tangki.*.tgl_produksi' => ['nullable', 'date'],
+            'tangki.*.tgl_expired' => ['nullable', 'date'],
+            'tangki.*.no_segel_bc' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_segel_perusahaan' => ['nullable', 'string', 'max:50'],
+            'tangki.*.lokasi_penempatan' => ['nullable', 'string', 'max:100'],
+            'tangki.*.wk_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.pel_muat' => ['nullable', 'string', 'max:10'],
+            'tangki.*.pel_transit' => ['nullable', 'string', 'max:10'],
+            'tangki.*.pel_bongkar' => ['nullable', 'string', 'max:10'],
+        ]);
+
+        DB::beginTransaction();
+        try {
+            foreach ($validated['tangki'] as $tangkiData) {
+                $document->tangki()->create($tangkiData);
+            }
+            DB::commit();
+            return back()->with('success', 'Data tangki susulan berhasil ditambahkan.');
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->withErrors(['error' => 'Gagal menambahkan tangki susulan: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(Document $document)
     {
         // Only allow deleting if status is DRAFT
-        if ($document->status !== 'DRAFT') {
+        if (strtolower($document->status) !== 'draft') {
             return redirect()->route('documents.index')
                 ->with('error', 'Dokumen hanya dapat dihapus jika statusnya masih Draft.');
         }
@@ -384,12 +473,9 @@ class DocumentController extends Controller
      */
     public function submit(Document $document)
     {
-
-        // Allow submit when document is DRAFT or already SUBMITTED (supports re-submit
-        // after quick edits). Keep requirement that document must have at least one tangki.
-        if (! in_array(strtoupper($document->status), ['DRAFT', 'SUBMITTED'])) {
+        if (strtolower($document->status) !== 'draft') {
             return redirect()->route('documents.show', $document)
-                ->with('error', 'Dokumen hanya dapat disubmit jika statusnya masih Draft atau Submitted.');
+                ->with('error', 'Dokumen hanya dapat disubmit jika statusnya masih Draft.');
         }
 
         // Validate that document has at least one tangki
@@ -399,377 +485,44 @@ class DocumentController extends Controller
         }
 
         $document->update([
-            'status' => 'SUBMITTED',
+            'status' => 'submitted',
             'submitted_at' => now(),
         ]);
 
         return redirect()->route('documents.show', $document)
             ->with('success', 'Dokumen berhasil disubmit untuk persetujuan.');
-
     }
 
     /**
-     * Append one or more tangki to an existing document.
-     * This endpoint is intended for a lightweight "add tangki" action (used by the
-     * Documents show page modal) and therefore validates a subset of tangki fields.
-     */
-    public function appendTangki(Request $request, Document $document)
-    {
-        // Authorization: only owner (created_by) or admin role or users with permission 'documents.append' can append
-        $user = auth()->user();
-        if (! $user) {
-            abort(403);
-        }
-
-        if (! (
-            $user->id === $document->created_by
-            || $user->hasRole('admin')
-            || $user->hasPermission('documents.append')
-        )) {
-            abort(403, 'Anda tidak memiliki akses untuk menambah tangki pada dokumen ini.');
-        }
-
-        // Snapshot before
-        $before = [
-            'tangki_count' => $document->tangki()->count(),
-            'tangki_ids' => $document->tangki()->pluck('id')->toArray(),
-        ];
-
-        // Stricter validation: require kd_dok_inout and proper exists checks
-        $validated = $request->validate([
-            'tangki' => ['required', 'array', 'min:1'],
-            'tangki.*.no_tangki' => ['required', 'string', 'max:50'],
-            'tangki.*.kd_dok_inout' => ['required', 'string', 'exists:kd_dok_inout,kd_dok_inout'],
-            'tangki.*.jenis_isi' => ['required', 'string', 'max:200'],
-            'tangki.*.kapasitas' => ['required', 'numeric', 'min:0'],
-            'tangki.*.jumlah_isi' => ['required', 'numeric', 'min:0'],
-            'tangki.*.satuan' => ['required', 'string', 'max:10'],
-            'tangki.*.kondisi' => ['required', 'string', 'in:BAIK,RUSAK,BOCOR'],
-            // other optional fields
-            'tangki.*.seri_out' => ['nullable', 'integer', 'min:1'],
-            'tangki.*.no_bl_awb' => ['nullable', 'string', 'max:50'],
-            'tangki.*.tgl_bl_awb' => ['nullable', 'date'],
-            'tangki.*.id_consignee' => ['nullable', 'string', 'max:50'],
-            'tangki.*.consignee' => ['nullable', 'string', 'max:200'],
-            'tangki.*.no_bc11' => ['nullable', 'string', 'max:50'],
-            'tangki.*.tgl_bc11' => ['nullable', 'date'],
-            'tangki.*.no_pos_bc11' => ['nullable', 'string', 'max:10'],
-            'tangki.*.no_dok_inout' => ['nullable', 'string', 'max:50'],
-            'tangki.*.tgl_dok_inout' => ['nullable', 'date'],
-            'tangki.*.kd_sar_angkut_inout' => ['nullable', 'string', 'max:10'],
-            'tangki.*.no_pol' => ['nullable', 'string', 'max:20'],
-            'tangki.*.jenis_kemasan' => ['nullable', 'string', 'max:100'],
-            'tangki.*.jml_satuan' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.jns_satuan' => ['nullable', 'string', 'max:10'],
-            'tangki.*.pel_muat' => ['nullable', 'string', 'max:10'],
-            'tangki.*.pel_transit' => ['nullable', 'string', 'max:10'],
-            'tangki.*.pel_bongkar' => ['nullable', 'string', 'max:10'],
-            'tangki.*.panjang' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.lebar' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.tinggi' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.berat_kosong' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.berat_isi' => ['nullable', 'numeric', 'min:0'],
-            'tangki.*.lokasi_penempatan' => ['nullable', 'string', 'max:100'],
-            'tangki.*.wk_inout' => ['nullable', 'string', 'max:50'],
-            'tangki.*.tgl_produksi' => ['nullable', 'date'],
-            'tangki.*.tgl_expired' => ['nullable', 'date'],
-            'tangki.*.no_segel_bc' => ['nullable', 'string', 'max:50'],
-            'tangki.*.no_segel_perusahaan' => ['nullable', 'string', 'max:50'],
-            'tangki.*.no_dok_ijin_tps' => ['nullable', 'string', 'max:35'],
-            'tangki.*.tgl_dok_ijin_tps' => ['nullable', 'date'],
-            'tangki.*.keterangan' => ['nullable', 'string'],
-        ]);
-
-        DB::beginTransaction();
-        try {
-            $createdTangkiIds = [];
-            $createdTangkiRows = [];
-            $blCounters = [];
-            foreach ($validated['tangki'] as $tangkiData) {
-                $blKey = ($tangkiData['no_bl_awb'] ?? '') . '|' . ($tangkiData['tgl_bl_awb'] ?? '');
-                if (!isset($blCounters[$blKey])) {
-                    $maxSeri = $document->tangki()
-                        ->where('no_bl_awb', $tangkiData['no_bl_awb'] ?? '')
-                        ->where('tgl_bl_awb', $tangkiData['tgl_bl_awb'] ?? '')
-                        ->max('seri_out');
-                    $blCounters[$blKey] = $maxSeri ?? 0;
-                }
-                $blCounters[$blKey]++;
-                $tangkiData['seri_out'] = $blCounters[$blKey];
-
-                $created = $document->tangki()->create($tangkiData);
-                $createdTangkiIds[] = $created->id;
-                $createdTangkiRows[] = $created->toArray();
-            }
-
-            DB::commit();
-
-            // create audit entry
-            \App\Models\DocumentAudit::create([
-                'document_id' => $document->id,
-                'user_id' => $user->id,
-                'action' => 'append_tangki',
-                'before' => $before,
-                'after' => [
-                    'added_ids' => $createdTangkiIds,
-                    'added_rows' => $createdTangkiRows,
-                ],
-            ]);
-
-            // Handle status update based on current status
-            $statusUpdate = [];
-            $successMessage = 'Tangki berhasil ditambahkan.';
-
-            if ($document->status === 'APPROVED' && $document->sent_to_host) {
-                // APPROVED + already sent: set needs_resend flag
-                $statusUpdate['needs_resend'] = true;
-                $successMessage = 'Tangki berhasil ditambahkan. Silakan klik "Resend to Host" untuk mengirim ulang data terbaru.';
-            } elseif ($document->status === 'SUBMITTED' || $document->status === 'AMENDED') {
-                // SUBMITTED/AMENDED: change to AMENDED
-                $statusUpdate['status'] = 'AMENDED';
-                $successMessage = 'Tangki berhasil ditambahkan dan dokumen diberi status AMENDED.';
-
-                // notify approvers
-                $approvers = \App\Models\User::whereHas('roles', function ($q) {
-                    $q->where('name', 'approver');
-                })->get();
-
-                $withPerm = \App\Models\User::whereHas('roles.permissions', function ($q) {
-                    $q->where('name', 'documents.approve');
-                })->get();
-
-                $admins = \App\Models\User::whereHas('roles', function ($q) {
-                    $q->where('name', 'admin');
-                })->get();
-
-                $notify = $approvers->merge($withPerm)->merge($admins)->unique('id');
-
-                if ($notify->isNotEmpty()) {
-                    \Illuminate\Support\Facades\Notification::send($notify, new \App\Notifications\DocumentAmended($document, $user));
-                }
-            }
-            // DRAFT stays as DRAFT
-
-            if (!empty($statusUpdate)) {
-                $document->update($statusUpdate);
-            }
-
-            return redirect()->route('documents.show', $document)
-                ->with('success', $successMessage);
-
-        } catch (\Exception $e) {
-            DB::rollback();
-
-            return back()->withErrors(['error' => 'Terjadi kesalahan saat menambah tangki: '.$e->getMessage()]);
-        }
-    }
-
-    /**
-     * Parse Excel file and return data for frontend form
+     * Import tangki data from Excel
      */
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv',
+            'file' => 'required|mimes:xlsx,xls,csv'
         ]);
 
         try {
-            $data = Excel::toArray(new TangkiImport, $request->file('file'));
-            $rows = $data[0] ?? [];
+            $import = new TangkiImport();
+            $data = Excel::toCollection($import, $request->file('file'));
+            
+            if ($data->isEmpty() || $data->first()->isEmpty()) {
+                return response()->json(['error' => 'File Excel kosong atau format tidak sesuai'], 422);
+            }
 
-            $mappedData = collect($rows)->map(function ($row) {
-                // Map Excel columns to Tangki model fields
-                // Assuming Excel headers are snake_case or close to it
-                // You might need more robust mapping here depending on the Excel template
-                return [
-                    'no_tangki' => $row['no_tangki'] ?? $row['nomor_tangki'] ?? '',
-                    'kd_dok_inout' => $row['kd_dok_inout'] ?? $row['kode_dok_inout'] ?? '',
-                    'jenis_isi' => $row['jenis_isi'] ?? '',
-                    'kapasitas' => $row['kapasitas'] ?? 0,
-                    'jumlah_isi' => $row['jumlah_isi'] ?? 0,
-                    'satuan' => $row['satuan'] ?? 'LITER',
-                    'kondisi' => strtoupper($row['kondisi'] ?? 'BAIK'),
-                    'no_bl_awb' => $row['no_bl_awb'] ?? '',
-                    'tgl_bl_awb' => $this->transformDate($row['tgl_bl_awb'] ?? null),
-                    'id_consignee' => $row['id_consignee'] ?? '',
-                    'consignee' => $row['consignee'] ?? '',
-                    'no_bc11' => $row['no_bc11'] ?? '',
-                    'tgl_bc11' => $this->transformDate($row['tgl_bc11'] ?? null),
-                    'no_pos_bc11' => $row['no_pos_bc11'] ?? '',
-                    'no_dok_inout' => $row['no_dok_inout'] ?? '',
-                    'tgl_dok_inout' => $this->transformDate($row['tgl_dok_inout'] ?? null),
-                    'kd_sar_angkut_inout' => $row['kd_sar_angkut_inout'] ?? '',
-                    'no_pol' => $row['no_pol'] ?? '',
-                    'jenis_kemasan' => $row['jenis_kemasan'] ?? '',
-                    'jml_satuan' => $row['jml_satuan'] ?? 0,
-                    'jns_satuan' => $row['jns_satuan'] ?? '',
-                    'pel_muat' => $row['pel_muat'] ?? '',
-                    'pel_transit' => $row['pel_transit'] ?? '',
-                    'pel_bongkar' => $row['pel_bongkar'] ?? '',
-                    'panjang' => $row['panjang'] ?? 0,
-                    'lebar' => $row['lebar'] ?? 0,
-                    'tinggi' => $row['tinggi'] ?? 0,
-                    'berat_kosong' => $row['berat_kosong'] ?? 0,
-                    'berat_isi' => $row['berat_isi'] ?? 0,
-                    'lokasi_penempatan' => $row['lokasi_penempatan'] ?? '',
-                    'wk_inout' => $row['wk_inout'] ?? '', // datetime handling might be needed
-                    'tgl_produksi' => $this->transformDate($row['tgl_produksi'] ?? null),
-                    'tgl_expired' => $this->transformDate($row['tgl_expired'] ?? null),
-                    'no_segel_bc' => $row['no_segel_bc'] ?? '',
-                    'no_segel_perusahaan' => $row['no_segel_perusahaan'] ?? '',
-                    'no_dok_ijin_tps' => $row['no_dok_ijin_tps'] ?? '',
-                    'tgl_dok_ijin_tps' => $this->transformDate($row['tgl_dok_ijin_tps'] ?? null),
-                    'keterangan' => $row['keterangan'] ?? '',
-                ];
-            });
-
+            // Return the data to the frontend to populate the form
             return response()->json([
                 'success' => true,
-                'data' => $mappedData,
+                'data' => $data->first() // Return the first sheet
             ]);
-
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal memproses file: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['error' => 'Gagal membaca file: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * Import Tangki from Excel and append to Document
+     * Download import template
      */
-    public function importTangki(Request $request, Document $document)
-    {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv',
-        ]);
-
-        // Authorization check (same as appendTangki)
-        $user = auth()->user();
-        if (! $user || ! ($user->id === $document->created_by || $user->hasRole('admin') || $user->hasPermission('documents.append'))) {
-            return back()->withErrors(['error' => 'Anda tidak memiliki akses untuk menambah tangki.']);
-        }
-
-        DB::beginTransaction();
-        try {
-            $data = Excel::toArray(new TangkiImport, $request->file('file'));
-            $rows = $data[0] ?? [];
-            $count = 0;
-
-            foreach ($rows as $row) {
-                $tangkiData = [
-                    'no_tangki' => $row['no_tangki'] ?? $row['nomor_tangki'] ?? null,
-                    'kd_dok_inout' => $row['kd_dok_inout'] ?? $row['kode_dok_inout'] ?? null,
-                    'jenis_isi' => $row['jenis_isi'] ?? null,
-                    'kapasitas' => $row['kapasitas'] ?? 0,
-                    'jumlah_isi' => $row['jumlah_isi'] ?? 0,
-                    'satuan' => $row['satuan'] ?? 'LITER',
-                    'kondisi' => strtoupper($row['kondisi'] ?? 'BAIK'),
-                    // ... map other fields similarly to parseTangkiExcel ...
-                    'no_bl_awb' => $row['no_bl_awb'] ?? null,
-                    'tgl_bl_awb' => $this->transformDate($row['tgl_bl_awb'] ?? null),
-                    'id_consignee' => $row['id_consignee'] ?? null,
-                    'consignee' => $row['consignee'] ?? null,
-                    'no_bc11' => $row['no_bc11'] ?? null,
-                    'tgl_bc11' => $this->transformDate($row['tgl_bc11'] ?? null),
-                    'no_pos_bc11' => $row['no_pos_bc11'] ?? null,
-                    'no_dok_inout' => $row['no_dok_inout'] ?? null,
-                    'tgl_dok_inout' => $this->transformDate($row['tgl_dok_inout'] ?? null),
-                    'kd_sar_angkut_inout' => $row['kd_sar_angkut_inout'] ?? null,
-                    'no_pol' => $row['no_pol'] ?? null,
-                    'jenis_kemasan' => $row['jenis_kemasan'] ?? null,
-                    'jml_satuan' => $row['jml_satuan'] ?? 0,
-                    'jns_satuan' => $row['jns_satuan'] ?? null,
-                    'pel_muat' => $row['pel_muat'] ?? null,
-                    'pel_transit' => $row['pel_transit'] ?? null,
-                    'pel_bongkar' => $row['pel_bongkar'] ?? null,
-                    'panjang' => $row['panjang'] ?? 0,
-                    'lebar' => $row['lebar'] ?? 0,
-                    'tinggi' => $row['tinggi'] ?? 0,
-                    'berat_kosong' => $row['berat_kosong'] ?? 0,
-                    'berat_isi' => $row['berat_isi'] ?? 0,
-                    'lokasi_penempatan' => $row['lokasi_penempatan'] ?? null,
-                    'wk_inout' => $row['wk_inout'] ?? null,
-                    'tgl_produksi' => $this->transformDate($row['tgl_produksi'] ?? null),
-                    'tgl_expired' => $this->transformDate($row['tgl_expired'] ?? null),
-                    'no_segel_bc' => $row['no_segel_bc'] ?? null,
-                    'no_segel_perusahaan' => $row['no_segel_perusahaan'] ?? null,
-                    'no_dok_ijin_tps' => $row['no_dok_ijin_tps'] ?? null,
-                    'tgl_dok_ijin_tps' => $this->transformDate($row['tgl_dok_ijin_tps'] ?? null),
-                    'keterangan' => $row['keterangan'] ?? null,
-                ];
-
-                // Basic validation: skip empty rows
-                if (empty($tangkiData['no_tangki'])) continue;
-
-                // Auto-generate seri_out
-                $blKey = ($tangkiData['no_bl_awb'] ?? '') . '|' . ($tangkiData['tgl_bl_awb'] ?? '');
-                if (!isset($blCounters[$blKey])) {
-                    $maxSeri = $document->tangki()
-                        ->where('no_bl_awb', $tangkiData['no_bl_awb'] ?? '')
-                        ->where('tgl_bl_awb', $tangkiData['tgl_bl_awb'] ?? '')
-                        ->max('seri_out');
-                    $blCounters[$blKey] = $maxSeri ?? 0;
-                }
-                $blCounters[$blKey]++;
-                $tangkiData['seri_out'] = $blCounters[$blKey];
-
-                $document->tangki()->create($tangkiData);
-                $count++;
-            }
-
-            DB::commit();
-            
-            // Handle status update based on current status (same logic as appendTangki)
-            $statusUpdate = [];
-            $successMessage = "Berhasil mengimport $count tangki.";
-            
-            if ($document->status === 'APPROVED' && $document->sent_to_host) {
-                // APPROVED + already sent: set needs_resend flag
-                $statusUpdate['needs_resend'] = true;
-                $successMessage = "Berhasil mengimport $count tangki. Silakan klik \"Resend to Host\" untuk mengirim ulang data terbaru.";
-            } elseif ($document->status === 'SUBMITTED' || $document->status === 'AMENDED') {
-                // SUBMITTED/AMENDED: change to AMENDED
-                $statusUpdate['status'] = 'AMENDED';
-                $successMessage = "Berhasil mengimport $count tangki dan dokumen diberi status AMENDED.";
-            }
-            // DRAFT stays as DRAFT
-            
-            if (!empty($statusUpdate)) {
-                $document->update($statusUpdate);
-            }
-
-            return back()->with('success', $successMessage);
-
-        } catch (\Exception $e) {
-            DB::rollback();
-            return back()->withErrors(['error' => 'Gagal mengimport file: ' . $e->getMessage()]);
-        }
-    }
-
-    private function transformDate($value)
-    {
-        if (! $value) return null;
-        
-        // If it's numeric, it's likely an Excel serial date
-        if (is_numeric($value)) {
-            try {
-                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('Y-m-d');
-            } catch (\Throwable $e) {
-                // Fallback to string parsing if conversion fails
-            }
-        }
-
-        // Fallback for direct string dates
-        $timestamp = strtotime($value);
-        if ($timestamp !== false) {
-            return date('Y-m-d', $timestamp);
-        }
-
-        return null;
-    }
-
     public function downloadTemplate()
     {
         $path = 'template_import_tangki.xlsx';
@@ -786,22 +539,31 @@ class DocumentController extends Controller
      */
     private function getReferenceData()
     {
+        $user = auth()->user();
+        $isSuperuser = $user->hasRole('admin');
+
+        $kdTpsQuery = KdTps::select('kd_tps', 'nm_tps');
+        $kdGudangQuery = KdGudang::select('kd_gudang', 'nm_gudang', 'kd_tps');
+
+        if (!$isSuperuser) {
+            $access = DB::table('user_location_access')
+                ->where('user_id', $user->id)
+                ->get();
+            
+            $allowedTps = $access->pluck('kd_tps')->unique()->toArray();
+            $allowedGudang = $access->pluck('kd_gudang')->unique()->toArray();
+
+            $kdTpsQuery->whereIn('kd_tps', $allowedTps);
+            $kdGudangQuery->whereIn('kd_gudang', $allowedGudang);
+        }
+
         return [
             'kdDok' => KdDok::select('kd_dok', 'nm_dok')->get(),
-            'kdTps' => KdTps::select('kd_tps', 'nm_tps')->get(),
+            'kdTps' => $kdTpsQuery->get(),
             'nmAngkut' => NmAngkut::select('id', 'nm_angkut', 'call_sign')->get(),
-            // include kd_tps so frontend can filter gudang options by selected TPS
-            'kdGudang' => KdGudang::select('kd_gudang', 'nm_gudang', 'kd_tps')->get(),
-            'kdDokInout' => KdDokInout::select('kd_dok_inout', 'nm_dok_inout', 'jenis')->where('is_active', true)->get(),
-            'jenisSatuan' => ReferensiJenisSatuan::select('kode_satuan_barang', 'nama_satuan_barang')->get(),
-            'jenisKemasan' => ReferensiJenisKemasan::select('kode_jenis_kemasan', 'nama_jenis_kemasan')->get(),
-            'tangkiList' => \App\Models\Tangki::select('no_tangki')
-                ->whereNotNull('no_tangki')
-                ->where('no_tangki', '!=', '')
-                ->distinct()
-                ->pluck('no_tangki'),
+            'kdGudang' => $kdGudangQuery->get(),
+            'kdDokInout' => KdDokInout::select('kd_dok_inout', 'nm_dok_inout', 'jenis')->get(),
+            'tangkiList' => Tangki::distinct()->pluck('no_tangki')->toArray(),
         ];
     }
-
-    
 }

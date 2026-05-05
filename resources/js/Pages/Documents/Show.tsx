@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { Head } from '@inertiajs/react'
-import { router } from '@inertiajs/react'
+import { Head, router, usePage } from '@inertiajs/react'
+import axios from 'axios'
 import AppLayout from '@/Layouts/app-layout'
 import { Button } from "@/Components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/Components/ui/card"
@@ -19,7 +19,10 @@ import {
   FileJson,
   Upload,
   Info,
-  Package
+  Package,
+  AlertCircle,
+  FileUp,
+  Plus
 } from "lucide-react"
 
 interface Document {
@@ -99,7 +102,7 @@ const statusConfig: Record<string, { label: string; variant: 'secondary' | 'defa
 
 export default function ShowDocument({ auth, document }: ShowDocumentProps) {
   const [activeTab, setActiveTab] = useState<'header' | 'tangki' | 'waktu'>('header')
-  const StatusIcon = statusConfig[document.status.toLowerCase()]?.icon || Clock
+  const StatusIcon = statusConfig[(document.status || 'draft').toLowerCase()]?.icon || Clock
   const [transmissionFormat, setTransmissionFormat] = useState<'xml' | 'json'>('xml')
   const [isSending, setIsSending] = useState(false)
 
@@ -129,6 +132,7 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
         },
         onError: (errors) => {
           setIsSending(false)
+          alert('Gagal mengirim ke host: ' + (Object.values(errors)[0] || 'Terjadi kesalahan tidak dikenal.'))
           console.error('Send to host error:', errors)
         }
       })
@@ -143,9 +147,15 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
     return new Date(dateString).toLocaleString('id-ID')
   }
 
-  const calculatePercentage = (jumlah: number, kapasitas: number) => {
-    if (kapasitas === 0) return "0"
-    return ((jumlah / kapasitas) * 100).toFixed(1)
+  const calculatePercentage = (jumlah: any, kapasitas: any) => {
+    const numKapasitas = Number(kapasitas);
+    const numJumlah = Number(jumlah);
+    if (numKapasitas === 0) return "0"
+    return ((numJumlah / numKapasitas) * 100).toFixed(1)
+  }
+
+  const formatNumber = (num: any) => {
+    return Number(num).toLocaleString('id-ID');
   }
 
   return (
@@ -394,6 +404,88 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
 
           {activeTab === 'tangki' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {document.status !== 'DRAFT' && (
+                <div className="bg-slate-900 text-white flex items-center justify-between p-2 rounded-2xl border border-slate-800 shadow-xl">
+                  <div className="flex items-center gap-1 pl-4">
+                    <Package className="w-5 h-5 text-indigo-400" />
+                    <span className="text-[11px] font-black tracking-widest uppercase ml-2">Tangki Susulan</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      className="h-10 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider px-6 transition-all active:scale-95 border border-slate-700"
+                      onClick={() => router.get(`/documents/${document.id}/add-tangki`)}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Tambah Tangki (Manual)
+                    </Button>
+
+                    <Button
+                      type="button"
+                      className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider px-6 transition-all active:scale-95"
+                      onClick={() => window.document.getElementById('excel-append')?.click()}
+                    >
+                      <FileUp className="w-4 h-4 mr-2" />
+                      Import Tangki Susulan (Excel)
+                    </Button>
+
+                    <input
+                      id="excel-append"
+                      type="file"
+                      className="hidden"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        try {
+                          // 1. Parse Excel to JSON
+                          const response = await axios.post('/documents/import', formData);
+                          if (response.data.success) {
+                            const importedData = response.data.data;
+
+                            // 2. Format the data directly for appending
+                            const newTangki = importedData.map((row: any) => ({
+                              no_tangki: row.no_tangki || '',
+                              jenis_isi: row.jenis_isi || '',
+                              kapasitas: parseFloat(row.kapasitas) || 0,
+                              jumlah_isi: parseFloat(row.jumlah_isi) || 0,
+                              satuan: row.satuan || 'LTR',
+                              no_bl_awb: row.no_bl_awb || '',
+                              tgl_bl_awb: row.tgl_bl_awb || '',
+                              consignee: row.consignee || '',
+                              no_bc11: row.no_bc11 || '',
+                              tgl_bc11: row.tgl_bc11 || '',
+                              kondisi: row.kondisi || 'BAIK',
+                              no_dok_ijin_tps: row.no_dok_ijin_tps || '',
+                              tgl_dok_ijin_tps: row.tgl_dok_ijin_tps || '',
+                              pel_bongkar: row.pel_bongkar || 'IDMRK'
+                            }));
+
+                            // 3. Send to append route
+                            router.post(`/documents/${document.id}/append-tangki`, { tangki: newTangki }, {
+                              preserveScroll: true,
+                              onSuccess: () => {
+                                alert(`Berhasil menambahkan ${newTangki.length} tangki susulan.`);
+                              },
+                              onError: (errors) => {
+                                console.error(errors);
+                                alert('Gagal menambahkan tangki susulan. Periksa data excel anda (pastikan field wajib terisi).');
+                              }
+                            });
+                          }
+                        } catch (error: any) {
+                          alert(error.response?.data?.error || 'Gagal mengimport data Excel');
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {document.tangki.map((tangki, index) => (
                 <Card key={tangki.id} className="overflow-hidden border-slate-200 shadow-sm group hover:border-blue-300 transition-all duration-300">
                   <div className="bg-slate-50 dark:bg-slate-900 border-b px-6 py-4 flex items-center justify-between">
@@ -430,11 +522,11 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
                       <div className="space-y-1">
                         <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-widest">Kapasitas & Satuan</label>
                         <div className="font-bold text-slate-900 dark:text-slate-50">
-                          {tangki.jumlah_isi.toLocaleString('id-ID')} / {tangki.kapasitas.toLocaleString('id-ID')}
+                          {formatNumber(tangki.jumlah_isi)} / {formatNumber(tangki.kapasitas)}
                           <span className={`text-xs ${flowAccent} ml-1.5`}>{tangki.satuan}</span>
                         </div>
                         <div className="text-[10px] font-bold text-slate-500">
-                          {tangki.jml_satuan?.toLocaleString('id-ID') || 0} {tangki.jns_satuan || '-'}
+                          {formatNumber(tangki.jml_satuan || 0)} {tangki.jns_satuan || '-'}
                         </div>
                       </div>
 
@@ -597,5 +689,3 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
     </AppLayout>
   )
 }
-
-

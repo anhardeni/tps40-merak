@@ -1,0 +1,13 @@
+vendor/
+storage/
+bootstrap/cache/
+public/
+.git/
+.agents/
+.skills/
+graphify-out/
+node_modules/
+dist/
+build/
+*.bak.php
+*_bak.php

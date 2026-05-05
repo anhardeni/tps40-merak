@@ -69,7 +69,7 @@ const documentSchema = z.object({
     no_bl_awb: z.string().optional(),
     tgl_bl_awb: z.string().optional(),
     id_consignee: z.string().optional(),
-    consignee: z.string().min(1, 'Consignee wajib diisi'),
+    consignee: z.string().optional(),
     no_bc11: z.string().optional(),
     tgl_bc11: z.string().optional(),
     no_pos_bc11: z.string().optional(),
@@ -100,10 +100,14 @@ const documentSchema = z.object({
     wk_inout: z.string().optional(),
     pel_muat: z.string().optional(),
     pel_transit: z.string().optional(),
-    pel_bongkar: z.string().min(1, 'Pelabuhan Bongkar wajib diisi'),
-    no_dok_ijin_tps: z.string().min(1, 'No Ijin TPS wajib diisi'),
-    tgl_dok_ijin_tps: z.string().min(1, 'Tgl Ijin TPS wajib diisi'),
+    pel_bongkar: z.string().optional(),
+    no_dok_ijin_tps: z.string().optional(),
+    tgl_dok_ijin_tps: z.string().optional(),
   })).min(1, 'Minimal harus ada 1 tangki'),
+})
+
+const appendTangkiSchema = z.object({
+  tangki: documentSchema.shape.tangki,
 })
 
 type DocumentFormData = z.infer<typeof documentSchema>
@@ -120,10 +124,11 @@ interface DocumentFormProps {
   }
   onSubmit: (data: DocumentFormData) => void
   isLoading?: boolean
+  isAppendMode?: boolean
 }
 
-export function DocumentForm({ document, referenceData, onSubmit, isLoading = false }: DocumentFormProps) {
-  const [activeTab, setActiveTab] = useState<'header' | 'tangki' | 'waktu'>('header')
+export function DocumentForm({ document, referenceData, onSubmit, isLoading = false, isAppendMode = false }: DocumentFormProps) {
+  const [activeTab, setActiveTab] = useState<'header' | 'tangki' | 'waktu'>(isAppendMode ? 'tangki' : 'header')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
@@ -140,6 +145,17 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
     })()
   )
 
+  const formatDateForInput = (date: any) => {
+    if (!date) return '';
+    try {
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return '';
+      return d.toISOString().split('T')[0];
+    } catch (e) {
+      return '';
+    }
+  };
+
   const {
     register,
     control,
@@ -148,22 +164,72 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
     setValue,
     watch,
   } = useForm<DocumentFormData>({
-    resolver: zodResolver(documentSchema) as any,
+    resolver: zodResolver(isAppendMode ? appendTangkiSchema : documentSchema) as any,
     defaultValues: {
       kd_dok: document?.kd_dok || '',
       kd_tps: document?.kd_tps || '',
       nm_angkut_id: document?.nm_angkut_id?.toString() || '',
       kd_gudang: document?.kd_gudang || '',
       no_voy_flight: document?.no_voy_flight || '',
-      tgl_entry: document?.tgl_entry || new Date().toISOString().split('T')[0],
-      tgl_tiba: document?.tgl_tiba || '',
+      tgl_entry: formatDateForInput(document?.tgl_entry) || new Date().toISOString().split('T')[0],
+      tgl_tiba: formatDateForInput(document?.tgl_tiba) || '',
       jam_entry: document?.jam_entry || new Date().toTimeString().slice(0, 8),
-      tgl_gate_in: document?.tgl_gate_in || '',
+      tgl_gate_in: formatDateForInput(document?.tgl_gate_in) || '',
       jam_gate_in: document?.jam_gate_in || '',
-      tgl_gate_out: document?.tgl_gate_out || '',
+      tgl_gate_out: formatDateForInput(document?.tgl_gate_out) || '',
       jam_gate_out: document?.jam_gate_out || '',
       keterangan: document?.keterangan || '',
-      tangki: document?.tangki || [
+      tangki: isAppendMode ? [
+        {
+          no_tangki: '',
+          seri_out: (document?.tangki?.length || 0) + 1,
+          no_bl_awb: '',
+          tgl_bl_awb: '',
+          id_consignee: '',
+          consignee: '',
+          no_bc11: '',
+          tgl_bc11: '',
+          no_pos_bc11: '',
+          jml_satuan: 0,
+          jns_satuan: '',
+          kd_dok_inout: '',
+          no_dok_inout: '',
+          tgl_dok_inout: '',
+          kd_sar_angkut_inout: '',
+          no_pol: '',
+          jenis_isi: '',
+          jenis_kemasan: '',
+          kapasitas: 0,
+          jumlah_isi: 0,
+          satuan: 'LITER',
+          pel_bongkar: 'IDMRK',
+          no_dok_ijin_tps: '',
+          tgl_dok_ijin_tps: '',
+          panjang: 0,
+          lebar: 0,
+          tinggi: 0,
+          berat_kosong: 0,
+          berat_isi: 0,
+          kondisi: 'BAIK',
+          keterangan: '',
+          tgl_produksi: '',
+          tgl_expired: '',
+          no_segel_bc: '',
+          no_segel_perusahaan: '',
+          lokasi_penempatan: '',
+          wk_inout: '',
+          pel_muat: '',
+          pel_transit: '',
+        }
+      ] : document?.tangki?.map((t: any) => ({
+        ...t,
+        tgl_bl_awb: formatDateForInput(t.tgl_bl_awb),
+        tgl_bc11: formatDateForInput(t.tgl_bc11),
+        tgl_dok_inout: formatDateForInput(t.tgl_dok_inout),
+        tgl_produksi: formatDateForInput(t.tgl_produksi),
+        tgl_expired: formatDateForInput(t.tgl_expired),
+        tgl_dok_ijin_tps: formatDateForInput(t.tgl_dok_ijin_tps),
+      })) || [
         {
           no_tangki: '',
           seri_out: 1,
@@ -186,6 +252,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
           kapasitas: 0,
           jumlah_isi: 0,
           satuan: 'LITER',
+          pel_bongkar: 'IDMRK',
           no_dok_ijin_tps: '',
           tgl_dok_ijin_tps: '',
           panjang: 0,
@@ -203,7 +270,6 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
           wk_inout: '',
           pel_muat: '',
           pel_transit: '',
-          pel_bongkar: '',
         }
       ]
     }
@@ -216,6 +282,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
   const handleFormSubmit = async (data: DocumentFormData) => {
     setIsSubmitting(true)
+    setMessage(null)
     // Ensure all tangki records have the correct flow type
     const updatedData = {
       ...data,
@@ -226,6 +293,9 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
     }
     try {
       await onSubmit(updatedData)
+    } catch (error: any) {
+      console.error("Validation error caught:", error)
+      setMessage({ type: 'error', text: 'Terjadi kesalahan saat menyimpan data. Periksa kembali form anda.' })
     } finally {
       setIsSubmitting(false)
     }
@@ -254,23 +324,23 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
         jenis_isi: 'PREMIUM GASOLINE',
         kapasitas: 25000,
         jumlah_isi: 20000,
-        satuan: 'LITER',
+        satuan: 'LTR',
         kondisi: 'BAIK',
         no_bl_awb: 'BL-DUMMY-' + Math.floor(Math.random() * 1000),
         tgl_bl_awb: new Date().toISOString().split('T')[0],
         consignee: 'PT TEST DATA SEJAHTERA',
-        id_consignee: '12.345.678.9-123.000',
+        id_consignee: '123456789123000',
         no_bc11: '000123',
         tgl_bc11: new Date().toISOString().split('T')[0],
-        no_pos_bc11: '0001',
+        no_pos_bc11: '000100000012',
         kd_dok_inout: firstDokInout,
-        no_dok_inout: 'DUM-LALIN-001',
+        no_dok_inout: '005001',
         tgl_dok_inout: new Date().toISOString().split('T')[0],
-        kd_sar_angkut_inout: 'LAND',
-        no_pol: 'B 1234 TEST',
+        kd_sar_angkut_inout: '3',
+        no_pol: 'B1234TES',
         jenis_kemasan: 'BULK',
         jml_satuan: 1,
-        jns_satuan: 'DRM',
+        jns_satuan: 'TNE',
         panjang: 6,
         lebar: 2.5,
         tinggi: 2.5,
@@ -285,9 +355,10 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
         wk_inout: new Date().toISOString().slice(0, 16),
         pel_muat: 'IDTPP',
         pel_transit: 'IDTPP',
-        pel_bongkar: 'IDTPP',
+        pel_bongkar: 'IDMRK',
         no_dok_ijin_tps: 'IJIN-001',
         tgl_dok_ijin_tps: new Date().toISOString().split('T')[0],
+        created_by: 1,
       }
     ];
     setValue('tangki', dummyTangki);
@@ -310,10 +381,10 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
   const filteredKdDokInout = referenceData.kdDokInout.filter(d => d.jenis === flowType)
 
-  const accentColor = flowType === 'IN' ? 'blue' : 'amber'
-  const accentClass = flowType === 'IN' ? 'text-blue-600 border-blue-200' : 'text-amber-600 border-amber-200'
-  const ringClass = flowType === 'IN' ? 'focus:ring-blue-500' : 'focus:ring-amber-500'
-  const bgAccent = flowType === 'IN' ? 'bg-blue-50' : 'bg-amber-50'
+  const accentColor = '#C7B496'
+  const accentClass = 'text-[#C7B496] border-[#C7B496]/20'
+  const ringClass = 'focus:ring-[#C7B496]'
+  const bgAccent = 'bg-[#C7B496]/5'
 
   const addTangki = () => {
     append({
@@ -347,7 +418,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
       wk_inout: '',
       pel_muat: '',
       pel_transit: '',
-      pel_bongkar: '',
+      pel_bongkar: 'IDMRK',
       no_dok_ijin_tps: '',
       tgl_dok_ijin_tps: '',
     })
@@ -357,35 +428,35 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
     <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-100 dark:border-slate-800 pb-6">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tighter dark:text-slate-50 uppercase">
+          <h1 className="text-5xl font-black text-white tracking-tighter dark:text-slate-50 uppercase leading-none">
             {document ? 'Edit Dokumen' : 'Entry Dokumen Baru'}
           </h1>
-          <p className="text-slate-400 mt-2 font-medium flex items-center gap-2 italic">
-            <Info className="w-4 h-4" />
-            Lengkapi data manifest & pergerakan tangki TPS
+          <p className="text-white/40 mt-2 font-medium flex items-center gap-2 italic text-xs tracking-widest uppercase">
+            <Info className="w-4 h-4 text-[#C7B496]" />
+            Titanium Engine :: Secure Protocol Active
           </p>
         </div>
 
         {/* Compact Flow Selection - iPhone 17 Style */}
-        <div className="bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl flex items-center shadow-inner border border-slate-200 dark:border-slate-800 min-w-[320px]">
+        <div className="bg-white/5 backdrop-blur-2xl p-1.5 rounded-2xl flex items-center shadow-2xl border border-white/10 min-w-[320px]">
           <button
             type="button"
             onClick={() => setFlowType('IN')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-300 font-black text-[11px] tracking-widest ${flowType === 'IN'
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
-              : 'text-slate-400 hover:text-slate-600'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-500 font-black text-[11px] tracking-widest ${flowType === 'IN'
+              ? 'bg-[#C7B496] text-black shadow-[0_0_20px_rgba(199,180,150,0.4)] scale-[1.02]'
+              : 'text-white/40 hover:text-white/60'
               }`}
           >
             <LogIn className={`w-4 h-4 ${flowType === 'IN' ? 'animate-pulse' : ''}`} />
             GATE IN
           </button>
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-800 mx-1" />
+          <div className="w-px h-6 bg-white/10 mx-1" />
           <button
             type="button"
             onClick={() => setFlowType('OUT')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-300 font-black text-[11px] tracking-widest ${flowType === 'OUT'
-              ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
-              : 'text-slate-400 hover:text-slate-600'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-500 font-black text-[11px] tracking-widest ${flowType === 'OUT'
+              ? 'bg-[#A2A2A2] text-black shadow-[0_0_20px_rgba(162,162,162,0.4)] scale-[1.02]'
+              : 'text-white/40 hover:text-white/60'
               }`}
           >
             GATE OUT
@@ -468,49 +539,53 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
 
 
       {/* Modern Glass Tab Navigation */}
-      <div className="flex p-1 space-x-1 bg-slate-100 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 sticky top-4 z-10 backdrop-blur-md shadow-sm">
-        <button
-          type="button"
-          onClick={() => setActiveTab('header')}
-          className={`flex-1 flex items-center justify-center py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'header'
-            ? `bg-white dark:bg-slate-800 ${flowType === 'IN' ? 'text-blue-600' : 'text-amber-600'} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
-            : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
-            }`}
-        >
-          <Info className="w-4 h-4 mr-2" />
-          Informasi Header
-        </button>
+      <div className="flex p-1.5 space-x-1 bg-white/5 backdrop-blur-2xl rounded-2xl border border-white/10 sticky top-4 z-50 shadow-2xl">
+        {!isAppendMode && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('header')}
+            className={`flex-1 flex items-center justify-center py-3 text-[11px] font-black tracking-widest uppercase rounded-xl transition-all duration-300 ${activeTab === 'header'
+              ? 'bg-[#C7B496] text-black shadow-lg'
+              : 'text-white/40 hover:text-white/60 hover:bg-white/5'
+              }`}
+          >
+            <Info className="w-4 h-4 mr-2" />
+            Header Info
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setActiveTab('tangki')}
-          className={`flex-1 flex items-center justify-center py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'tangki'
-            ? `bg-white dark:bg-slate-800 ${flowType === 'IN' ? 'text-blue-600' : 'text-amber-600'} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
-            : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
+          className={`flex-1 flex items-center justify-center py-3 text-[11px] font-black tracking-widest uppercase rounded-xl transition-all duration-300 ${activeTab === 'tangki'
+            ? 'bg-[#C7B496] text-black shadow-lg'
+            : 'text-white/40 hover:text-white/60 hover:bg-white/5'
             }`}
         >
           <Package className="w-4 h-4 mr-2" />
-          Daftar Tangki ({fields.length})
+          Tanks List ({fields.length})
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('waktu')}
-          className={`flex-1 flex items-center justify-center py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'waktu'
-            ? `bg-white dark:bg-slate-800 ${flowType === 'IN' ? 'text-blue-600' : 'text-amber-600'} shadow-sm ring-1 ring-slate-200 dark:ring-slate-700`
-            : 'text-slate-500 hover:text-slate-700 hover:bg-white/50 dark:hover:bg-slate-800/50'
-            }`}
-        >
-          <Clock className="w-4 h-4 mr-2" />
-          Pencatatan Waktu
-        </button>
+        {!isAppendMode && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('waktu')}
+            className={`flex-1 flex items-center justify-center py-3 text-[11px] font-black tracking-widest uppercase rounded-xl transition-all duration-300 ${activeTab === 'waktu'
+              ? 'bg-[#C7B496] text-black shadow-lg'
+              : 'text-white/40 hover:text-white/60 hover:bg-white/5'
+              }`}
+          >
+            <Clock className="w-4 h-4 mr-2" />
+            Timeline
+          </button>
+        )}
       </div>
 
       <form onSubmit={handleSubmit(handleFormSubmit as any)} className="space-y-6">
-        {activeTab === 'header' && (
+        {activeTab === 'header' && !isAppendMode && (
           <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Card className={`border-slate-200 shadow-sm overflow-hidden border-l-4 ${flowType === 'IN' ? 'border-l-blue-500' : 'border-l-amber-500'}`}>
-              <div className="bg-slate-50 dark:bg-slate-900 border-b p-4">
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <Info className={`w-5 h-5 ${flowType === 'IN' ? 'text-blue-500' : 'text-amber-500'}`} /> General Document Information
+            <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl overflow-hidden border-l-4 border-l-[#C7B496]">
+              <div className="bg-white/5 border-b border-white/10 p-4">
+                <CardTitle className="text-xs font-black tracking-[0.2em] uppercase flex items-center gap-2 text-[#C7B496]">
+                  <Info className="w-5 h-5" /> General Document Information
                 </CardTitle>
               </div>
               <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -518,7 +593,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   <Label htmlFor="kd_dok" className="text-sm font-semibold">Kode Dokumen *</Label>
                   <select
                     {...register('kd_dok')}
-                    className={`flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-2 text-sm focus:ring-2 focus:outline-none dark:border-slate-800 dark:bg-slate-950 shadow-sm transition-all ${ringClass}`}
+                    className={`flex h-10 w-full rounded-lg border border-slate-200 bg-white dark:bg-slate-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:outline-none dark:border-slate-800 shadow-sm transition-all ${ringClass}`}
                   >
                     <option value="">Pilih Kode Dokumen</option>
                     {filteredKdDok.map((item) => (
@@ -533,7 +608,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   <Label htmlFor="kd_tps" className="text-sm font-semibold">Kode TPS *</Label>
                   <select
                     {...register('kd_tps')}
-                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 shadow-sm transition-all"
+                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-white dark:bg-slate-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-800 shadow-sm transition-all"
                   >
                     <option value="">Pilih Kode TPS</option>
                     {referenceData.kdTps.map((item) => (
@@ -548,7 +623,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   <Label htmlFor="nm_angkut_id" className="text-sm font-semibold">Nama Angkutan *</Label>
                   <select
                     {...register('nm_angkut_id')}
-                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 shadow-sm transition-all"
+                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-white dark:bg-slate-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-800 shadow-sm transition-all"
                   >
                     <option value="">Pilih Nama Angkutan</option>
                     {referenceData.nmAngkut.map((item) => (
@@ -563,7 +638,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
                   <Label htmlFor="kd_gudang" className="text-sm font-semibold">Kode Gudang *</Label>
                   <select
                     {...register('kd_gudang')}
-                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950 shadow-sm transition-all"
+                    className="flex h-10 w-full rounded-lg border border-slate-200 bg-white dark:bg-slate-900 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none dark:border-slate-800 shadow-sm transition-all"
                   >
                     <option value="">Pilih Kode Gudang</option>
                     {referenceData.kdGudang.map((item) => (
@@ -699,255 +774,282 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
             </div>
             <div className="space-y-4">
               {fields.map((field: any, index: number) => (
-                <Card key={field.id} className={`border-slate-200 shadow-sm overflow-hidden border-l-4 ${flowType === 'IN' ? 'border-l-blue-500' : 'border-l-amber-500'}`}>
-                  <div className="bg-slate-50 dark:bg-slate-900 border-b px-4 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full ${flowType === 'IN' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'} flex items-center justify-center font-bold text-xs ring-2 ring-white dark:ring-slate-800 transition-colors duration-300 shadow-sm`}>
+                <Card key={field.id} className={`border-slate-200 shadow-sm overflow-hidden border-l-4 ${flowType === 'IN' ? 'border-l-blue-500' : 'border-l-amber-500'} mb-8`}>
+                  {/* HEADER CARD: Identitas Utama & Tombol Hapus */}
+                  <div className="bg-slate-50 dark:bg-slate-900/50 border-b px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-xl ${flowType === 'IN' ? 'bg-blue-600 shadow-blue-200' : 'bg-amber-500 shadow-amber-200'} text-white flex items-center justify-center font-black text-sm shadow-lg`}>
                         {index + 1}
                       </div>
-                      <span className="text-sm font-bold tracking-wide">TANGKI DETAIL</span>
+                      <div>
+                        <h3 className="text-sm font-black tracking-widest uppercase">Detail Tangki #{index + 1}</h3>
+                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Informasi muatan dan perijinan pabean</p>
+                      </div>
                     </div>
                     {fields.length > 1 && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all rounded-full p-2 h-auto"
+                        className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all rounded-xl px-3 py-1.5 h-auto text-[10px] font-bold uppercase tracking-wider"
                         onClick={() => remove(index)}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-4 h-4 mr-2" /> Hapus Baris
                       </Button>
                     )}
                   </div>
-                  <CardContent className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                    {/* Basic Info */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">No. Tangki *</Label>
-                      <Input 
-                        list={`tangkis-${index}`} 
-                        {...register(`tangki.${index}.no_tangki` as const)} 
-                        className="rounded-lg bg-slate-50/50 focus:bg-purple-500" 
-                        placeholder="Pilih atau ketik baru..."
-                      />
-                      <datalist id={`tangkis-${index}`}>
-                        {referenceData.tangkiList?.map((t: string) => (
-                          <option key={t} value={t} />
-                        ))}
-                      </datalist>
-                      {errors.tangki?.[index]?.no_tangki && <p className="text-[11px] text-rose-500 font-medium">{errors.tangki[index].no_tangki.message}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Seri Out (Oto)</Label>
-                      <Input 
-                        type="number" 
-                        value={
-                          watch('tangki')?.slice(0, index + 1).filter((t: any) => 
-                            t.no_bl_awb && 
-                            t.no_bl_awb === watch(`tangki.${index}.no_bl_awb`) && 
-                            t.tgl_bl_awb === watch(`tangki.${index}.tgl_bl_awb`)
-                          ).length || 1
-                        }
-                        readOnly
-                        tabIndex={-1}
-                        className="rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 cursor-not-allowed font-mono font-bold" 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Jenis Isi *</Label>
-                      <Input {...register(`tangki.${index}.jenis_isi` as const)} className="rounded-lg bg-slate-50/50 focus:bg-purple-500" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Kondisi</Label>
-                      <select {...register(`tangki.${index}.kondisi` as const)} className="flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 transition-all">
-                        <option value="BAIK">BAIK</option>
-                        <option value="RUSAK">RUSAK</option>
-                        <option value="BOCOR">BOCOR</option>
-                      </select>
-                    </div>
 
-                    {/* Capacity Row */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Kapasitas</Label>
-                      <Input type="number" step="0.001" {...register(`tangki.${index}.kapasitas` as const, { setValueAs: (v) => v === '' ? 0 : parseFloat(v) })} className="rounded-lg shadow-inner" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Jumlah Isi</Label>
-                      <Input type="number" step="0.001" {...register(`tangki.${index}.jumlah_isi` as const, { setValueAs: (v) => v === '' ? 0 : parseFloat(v) })} className="rounded-lg shadow-inner" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Satuan Utama</Label>
-                      <select {...register(`tangki.${index}.satuan` as const)} className="flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 transition-all">
-                        <option value="LITER">LITER</option>
-                        <option value="KGM">KGM</option>
-                        <option value="M3">M3</option>
-                        <option value="TON">TON</option>
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-slate-400">Jml Satuan *</Label>
-                        <Input type="number" step="0.001" {...register(`tangki.${index}.jml_satuan` as const)} className={`h-8 text-xs ${errors.tangki?.[index]?.jml_satuan ? 'border-red-500' : ''}`} />
+                  <CardContent className="p-0">
+                    <div className="flex flex-col">
+                      
+                      {/* GROUP 1: IDENTITAS & KONDISI FISIK */}
+                      <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2 mb-5">
+                          <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
+                          <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500">Identification & Condition</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">No. Tangki *</Label>
+                            <Input list={`tangkis-${index}`} {...register(`tangki.${index}.no_tangki` as const)} className="h-10 rounded-xl bg-slate-50/50 border-slate-200 focus:ring-indigo-500" placeholder="Pilih atau ketik..." />
+                            <datalist id={`tangkis-${index}`}>
+                              {referenceData.tangkiList?.map((t: string) => (
+                                <option key={t} value={t} />
+                              ))}
+                            </datalist>
+                            {errors.tangki?.[index]?.no_tangki && <p className="text-[10px] text-rose-500 font-bold">{errors.tangki[index].no_tangki.message}</p>}
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">Seri Out (Auto)</Label>
+                            <Input
+                              type="number"
+                              value={
+                                watch('tangki')?.slice(0, index + 1).filter((t: any) =>
+                                  t.no_bl_awb &&
+                                  t.no_bl_awb === watch(`tangki.${index}.no_bl_awb`) &&
+                                  t.tgl_bl_awb === watch(`tangki.${index}.tgl_bl_awb`)
+                                ).length || 1
+                              }
+                              readOnly
+                              tabIndex={-1}
+                              className="h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 font-mono font-bold border-none"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">Jenis Isi *</Label>
+                            <Input {...register(`tangki.${index}.jenis_isi` as const)} className="h-10 rounded-xl bg-slate-50/50" placeholder="Contoh: Crude Oil" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">Jenis Kemasan</Label>
+                            <Input {...register(`tangki.${index}.jenis_kemasan` as const)} className="h-10 rounded-xl bg-slate-50/50" placeholder="Contoh: BULK" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">Kondisi Fisik</Label>
+                            <select {...register(`tangki.${index}.kondisi` as const)} className="flex h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-1 text-sm font-medium focus:ring-2 focus:ring-indigo-500">
+                              <option value="BAIK">BAIK</option>
+                              <option value="RUSAK">RUSAK</option>
+                              <option value="BOCOR">BOCOR</option>
+                            </select>
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-slate-400">Jenis Sat</Label>
-                        <Input {...register(`tangki.${index}.jns_satuan` as const)} className="h-8 text-xs" placeholder="BOX/DRM" />
-                      </div>
-                    </div>
 
-                    {/* Shipments & Customs */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">No. BL/AWB</Label>
-                      <Input {...register(`tangki.${index}.no_bl_awb` as const)} className={`rounded-lg ${ringClass}`} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Tgl. BL/AWB</Label>
-                      <Input type="date" {...register(`tangki.${index}.tgl_bl_awb` as const)} className={`rounded-lg ${ringClass}`} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">No. BC11</Label>
-                      <Input {...register(`tangki.${index}.no_bc11` as const)} className={`rounded-lg ${ringClass}`} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-slate-400">Tgl BC11</Label>
-                        <Input type="date" {...register(`tangki.${index}.tgl_bc11` as const)} className="h-8 text-xs" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-slate-400">Pos BC11</Label>
-                        <Input {...register(`tangki.${index}.no_pos_bc11` as const)} className="h-8 text-xs" />
-                      </div>
-                    </div>
+                      {/* GROUP 2: DOKUMEN PABEAN & PENERIMA */}
+                      <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/20">
+                        <div className="flex items-center gap-2 mb-5">
+                          <div className="w-1.5 h-6 bg-blue-500 rounded-full" />
+                          <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-500">Customs & Consignee</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                          {/* Baris 1: BC11 dan BL/AWB */}
+                          <div className="md:col-span-6 space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">No. BC11 / Tgl / Pos</Label>
+                            <div className="flex gap-2">
+                              <Input {...register(`tangki.${index}.no_bc11` as const)} placeholder="No BC11" className="h-10 rounded-xl flex-1" />
+                              <Input type="date" {...register(`tangki.${index}.tgl_bc11` as const)} className="h-10 rounded-xl w-36 text-[11px]" />
+                              <Input {...register(`tangki.${index}.no_pos_bc11` as const)} placeholder="POS" className="h-10 rounded-xl w-32 text-center text-xs font-bold" />
+                            </div>
+                          </div>
+                          <div className="md:col-span-6 space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">No. BL/AWB & Tanggal</Label>
+                            <div className="flex gap-2">
+                              <Input {...register(`tangki.${index}.no_bl_awb` as const)} placeholder="Nomor B/L" className="h-10 rounded-xl flex-1" />
+                              <Input type="date" {...register(`tangki.${index}.tgl_bl_awb` as const)} className="h-10 rounded-xl w-36 text-[11px]" />
+                            </div>
+                          </div>
 
-                    {/* Consignee */}
-                    <div className="space-y-2 lg:col-span-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Consignee (Penerima) *</Label>
-                      <Input {...register(`tangki.${index}.consignee` as const)} className={`rounded-lg ${errors.tangki?.[index]?.consignee ? 'border-red-500' : ''}`} placeholder="NAMA PERUSAHAAN" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">ID Consignee</Label>
-                      <Input {...register(`tangki.${index}.id_consignee` as const)} className="rounded-lg" placeholder="NPWP/ID" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">No. Polisi (Truck)</Label>
-                      <Input {...register(`tangki.${index}.no_pol` as const)} className={`rounded-lg ${ringClass}`} placeholder="EX: B 1234 ABC" />
-                    </div>
-
-                    {/* Documents In/Out */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Kd. Dok Lalin *</Label>
-                      <select
-                        {...register(`tangki.${index}.kd_dok_inout` as const)}
-                        className={`flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 transition-all ${ringClass}`}
-                      >
-                        <option value="">Pilih Kode</option>
-                        {filteredKdDokInout.map((item) => (
-                          <option key={item.kd_dok_inout} value={item.kd_dok_inout}>
-                            {item.kd_dok_inout} - {item.nm_dok_inout}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">No. Dok Lalin</Label>
-                      <Input {...register(`tangki.${index}.no_dok_inout` as const)} className="rounded-lg" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Tgl. Dok Lalin</Label>
-                      <Input type="date" {...register(`tangki.${index}.tgl_dok_inout` as const)} className="rounded-lg" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Sarana Angkut</Label>
-                      <select {...register(`tangki.${index}.kd_sar_angkut_inout` as const)} className={`flex h-10 w-full rounded-lg border border-slate-200 bg-purple-500 px-3 py-1 text-sm focus:ring-2 transition-all ${ringClass}`}>
-                        <option value="LAND">DARAT (TRUK)</option>
-                        <option value="SEA">LAUT (KAPAL)</option>
-                        <option value="PIPE">PIPA</option>
-                        <option value="AIR">UDARA (PESAWAT)</option>
-                        <option value="RAIL">KERETA API</option>
-                        <option value="MULTIMODA">MULTIMODA</option>
-                        <option value="OTHER">LAINNYA</option>
-                      </select>
-                    </div>
-
-                    {/* Ports */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Pel. Muat</Label>
-                      <Input {...register(`tangki.${index}.pel_muat` as const)} className="rounded-lg" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Pel. Transit</Label>
-                      <Input {...register(`tangki.${index}.pel_transit` as const)} className="rounded-lg" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Pel. Bongkar *</Label>
-                      <Input {...register(`tangki.${index}.pel_bongkar` as const)} className={`rounded-lg ${errors.tangki?.[index]?.pel_bongkar ? 'border-red-500' : ''}`} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Wkt. In/Out</Label>
-                      <Input type="datetime-local" {...register(`tangki.${index}.wk_inout` as const)} className="rounded-lg" />
-                    </div>
-
-                    {/* Dimensions & Weight */}
-                    <div className="grid grid-cols-3 gap-2 lg:col-span-2">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-slate-400">Pjg (m)</Label>
-                        <Input type="number" step="0.01" {...register(`tangki.${index}.panjang` as const)} className="h-8 text-xs" />
+                          {/* Baris 2: Consignee dan Dokumen Lalin */}
+                          <div className="md:col-span-6 space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">Consignee (Penerima) *</Label>
+                            <div className="flex gap-2">
+                              <div className="relative w-48 shrink-0">
+                                <Input {...register(`tangki.${index}.id_consignee` as const)} placeholder="-" className="h-10 rounded-xl font-mono text-xs pl-12" />
+                                <span className="absolute left-3 top-3 text-[10px] font-bold text-slate-400">NPWP</span>
+                              </div>
+                              <Input {...register(`tangki.${index}.consignee` as const)} placeholder="Nama Penerima" className={`h-10 rounded-xl flex-1 ${errors.tangki?.[index]?.consignee ? 'border-rose-500' : ''}`} />
+                            </div>
+                          </div>
+                          <div className="md:col-span-6 space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">Dokumen Lalin</Label>
+                            <div className="flex gap-2">
+                              <select
+                                {...register(`tangki.${index}.kd_dok_inout` as const)}
+                                className="h-10 rounded-xl border border-slate-200 text-[10px] font-bold w-20"
+                              >
+                                <option value="">Pilih</option>
+                                {filteredKdDokInout.map(item => (
+                                  <option key={item.kd_dok_inout} value={item.kd_dok_inout}>
+                                    {item.kd_dok_inout} - {item.nm_dok_inout}
+                                  </option>
+                                ))}
+                              </select>
+                              <Input {...register(`tangki.${index}.no_dok_inout` as const)} placeholder="Nomor Dok" className="h-10 rounded-xl flex-1 text-xs" />
+                              <Input type="date" {...register(`tangki.${index}.tgl_dok_inout` as const)} className="h-10 rounded-xl w-32 text-[10px]" />
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-slate-400">Lbr (m)</Label>
-                        <Input type="number" step="0.01" {...register(`tangki.${index}.lebar` as const)} className="h-8 text-xs" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-slate-400">Tgi (m)</Label>
-                        <Input type="number" step="0.01" {...register(`tangki.${index}.tinggi` as const)} className="h-8 text-xs" />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 lg:col-span-2">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-slate-400">Berat Kosong (kg)</Label>
-                        <Input type="number" step="0.01" {...register(`tangki.${index}.berat_kosong` as const)} className="h-8 text-xs" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase text-slate-400">Berat Isi (kg)</Label>
-                        <Input type="number" step="0.01" {...register(`tangki.${index}.berat_isi` as const)} className="h-8 text-xs" />
-                      </div>
-                    </div>
 
-                    {/* Production & Expiration */}
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Tgl. Produksi</Label>
-                      <Input type="date" {...register(`tangki.${index}.tgl_produksi` as const)} className="rounded-lg" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Tgl. Expired</Label>
-                      <Input type="date" {...register(`tangki.${index}.tgl_expired` as const)} className="rounded-lg" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Segel Beacukai</Label>
-                      <Input {...register(`tangki.${index}.no_segel_bc` as const)} className="rounded-lg" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Segel Prshn</Label>
-                      <Input {...register(`tangki.${index}.no_segel_perusahaan` as const)} className="rounded-lg" />
-                    </div>
+                      {/* GROUP 3: LOGISTIK & TRANSPORTASI */}
+                      <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2 mb-5">
+                          <div className="w-1.5 h-6 bg-amber-500 rounded-full" />
+                          <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-amber-500">Logistics & Transit</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">No. Polisi (Truk)</Label>
+                            <Input {...register(`tangki.${index}.no_pol` as const)} placeholder="B 1234 ABC" className="h-10 rounded-xl font-black text-center" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">Waktu In / Out</Label>
+                            <Input type="datetime-local" {...register(`tangki.${index}.wk_inout` as const)} className="h-10 rounded-xl text-xs" />
+                          </div>
 
-                    {/* TPS Permit Data */}
-                    <div className="space-y-2 lg:col-span-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500 text-blue-500">No. Dok Ijin TPS * (Impor: Nomor SP2; Ekspor: Kartu Ekspor)</Label>
-                      <Input {...register(`tangki.${index}.no_dok_ijin_tps` as const)} className={`rounded-lg border-blue-200 focus:border-blue-400 ${errors.tangki?.[index]?.no_dok_ijin_tps ? 'border-red-500' : ''}`} placeholder="KEP-..." />
-                    </div>
-                    <div className="space-y-2 lg:col-span-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500 text-blue-500">Tgl. Dok Ijin TPS * (yyyy-mm-dd) (Impor: Tgl. SP2; Ekspor: Tgl. Kartu Ekspor)</Label>
-                      <Input type="date" {...register(`tangki.${index}.tgl_dok_ijin_tps` as const)} className={`rounded-lg border-blue-200 focus:border-blue-400 ${errors.tangki?.[index]?.tgl_dok_ijin_tps ? 'border-red-500' : ''}`} />
-                    </div>
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">Mode Transport</Label>
+                            <select {...register(`tangki.${index}.kd_sar_angkut_inout` as const)} className="h-10 w-full rounded-xl border border-slate-200 text-xs font-bold px-3">
+                              <option value="1">1 - DARAT (TRUK)</option>
+                              <option value="3">3 - LAUT (KAPAL)</option>
+                              <option value="7">7 - PIPA</option>
+                              <option value="4">4 - UDARA</option>
+                              <option value="2">2 - KERETA API</option>
+                              <option value="5">5 - MULTIMODA</option>
+                              <option value="6">6 - LAINNYA</option>
+                            </select>
+                          </div>
 
-                    {/* Location & Links */}
-                    <div className="space-y-2 lg:col-span-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Lokasi Penempatan</Label>
-                      <Input {...register(`tangki.${index}.lokasi_penempatan` as const)} className="rounded-lg" placeholder="KODE AREA / BLOK" />
-                    </div>
-                    <div className="space-y-2 lg:col-span-2">
-                      <Label className="text-xs font-bold uppercase text-slate-500">Keterangan Tambahan</Label>
-                      <Input {...register(`tangki.${index}.keterangan` as const)} className="rounded-lg" />
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">Kapasitas / Isi</Label>
+                            <div className="flex gap-2">
+                              <Input type="number" step="0.001" {...register(`tangki.${index}.kapasitas` as const, { setValueAs: (v) => v === '' ? 0 : parseFloat(v) })} placeholder="Kaps" className="h-10 rounded-xl flex-1 text-xs" />
+                              <Input type="number" step="0.001" {...register(`tangki.${index}.jumlah_isi` as const, { setValueAs: (v) => v === '' ? 0 : parseFloat(v) })} placeholder="Isi" className="h-10 rounded-xl flex-1 text-xs border-indigo-200" />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">Volume & Satuan *</Label>
+                            <div className="flex gap-2">
+                              <Input type="number" step="0.001" {...register(`tangki.${index}.jml_satuan` as const)} className="h-10 rounded-xl flex-1 font-bold" />
+                              <select {...register(`tangki.${index}.satuan` as const)} className="h-10 rounded-xl border border-slate-200 text-xs font-black w-24 focus:ring-2 focus:ring-blue-500">
+                                <option value="">Pilih</option>
+                                <option value="LTR">LITER</option>
+                                <option value="KGM">KGM</option>
+                                <option value="MTQ">QUBIC METRE</option>
+                                <option value="TNE">METRIC TON</option>
+                              </select>
+                            </div>
+                            <div className="mt-1">
+                               <Input {...register(`tangki.${index}.jns_satuan` as const)} className="h-7 text-[10px] rounded-lg" placeholder="Isi Jenis Sat (cth: BOX/DRM)" />
+                            </div>
+                          </div>
+                          <div className="lg:col-span-2 space-y-2">
+                            <Label className="text-[11px] font-black uppercase text-slate-400 tracking-tight">Alur Pelabuhan (Muat | Transit | Bongkar)</Label>
+                            <div className="flex gap-2">
+                              <Input {...register(`tangki.${index}.pel_muat` as const)} placeholder="MUAT" className="h-10 rounded-xl flex-1 text-center font-bold text-xs" />
+                              <Input {...register(`tangki.${index}.pel_transit` as const)} placeholder="TRANSIT" className="h-10 rounded-xl flex-1 text-center font-bold text-xs" />
+                              <Input {...register(`tangki.${index}.pel_bongkar` as const)} placeholder="BONGKAR" className="h-10 rounded-xl flex-1 text-center font-black text-xs bg-indigo-50/50" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* GROUP 4: PERMIT & TECHNICAL DETAILS */}
+                      <div className="p-6 bg-slate-50/30">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                          
+                          {/* Ijin TPS (Highlight) */}
+                          <div className="lg:col-span-7 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-blue-100 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                              <h5 className="text-[10px] font-black uppercase text-blue-600 flex items-center gap-2">
+                                <div className="w-2 h-2 bg-blue-500 rounded-sm rotate-45" /> Ijin TPS (SP2 / KARTU EKSPOR)
+                              </h5>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                <Label className="text-[9px] font-bold text-slate-400 uppercase">Nomor Dokumen Ijin *</Label>
+                                <Input {...register(`tangki.${index}.no_dok_ijin_tps` as const)} className={`h-10 rounded-xl border-blue-200 focus:border-blue-500 ${errors.tangki?.[index]?.no_dok_ijin_tps ? 'border-rose-500' : ''}`} placeholder="KEP-..." />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-[9px] font-bold text-slate-400 uppercase">Tanggal Ijin *</Label>
+                                <Input type="date" {...register(`tangki.${index}.tgl_dok_ijin_tps` as const)} className={`h-10 rounded-xl border-blue-200 focus:border-blue-500 ${errors.tangki?.[index]?.tgl_dok_ijin_tps ? 'border-rose-500' : ''}`} />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                               <div className="space-y-1.5">
+                                  <Label className="text-[9px] font-bold text-slate-400 uppercase">Lokasi Penempatan</Label>
+                                  <Input {...register(`tangki.${index}.lokasi_penempatan` as const)} placeholder="KODE AREA / BLOK" className="h-10 rounded-xl" />
+                               </div>
+                               <div className="space-y-1.5">
+                                  <Label className="text-[9px] font-bold text-slate-400 uppercase">Keterangan Tambahan</Label>
+                                  <Input {...register(`tangki.${index}.keterangan` as const)} className="h-10 rounded-xl" />
+                               </div>
+                            </div>
+                          </div>
+
+                          {/* Technical: Dimensi & Segel */}
+                          <div className="lg:col-span-5 space-y-6">
+                            <div>
+                              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 block">Dimensi Tangki (Meter)</Label>
+                              <div className="flex gap-2">
+                                <div className="flex-1">
+                                  <Input type="number" step="0.01" {...register(`tangki.${index}.panjang` as const)} placeholder="P" className="h-10 rounded-xl text-center font-bold" />
+                                  <span className="text-[8px] text-center block mt-1 text-slate-400 uppercase">Panjang</span>
+                                </div>
+                                <div className="flex-1">
+                                  <Input type="number" step="0.01" {...register(`tangki.${index}.lebar` as const)} placeholder="L" className="h-10 rounded-xl text-center font-bold" />
+                                  <span className="text-[8px] text-center block mt-1 text-slate-400 uppercase">Lebar</span>
+                                </div>
+                                <div className="flex-1">
+                                  <Input type="number" step="0.01" {...register(`tangki.${index}.tinggi` as const)} placeholder="T" className="h-10 rounded-xl text-center font-bold" />
+                                  <span className="text-[8px] text-center block mt-1 text-slate-400 uppercase">Tinggi</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                <Label className="text-[9px] font-bold text-slate-400 uppercase">Segel Beacukai</Label>
+                                <Input {...register(`tangki.${index}.no_segel_bc` as const)} className="h-9 rounded-xl border-slate-200 text-xs" />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-[9px] font-bold text-slate-400 uppercase">Segel Perusahaan</Label>
+                                <Input {...register(`tangki.${index}.no_segel_perusahaan` as const)} className="h-9 rounded-xl border-slate-200 text-xs" />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1.5">
+                                <Label className="text-[9px] font-bold text-slate-400 uppercase">Tgl Produksi</Label>
+                                <Input type="date" {...register(`tangki.${index}.tgl_produksi` as const)} className="h-9 rounded-xl text-[10px]" />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-[9px] font-bold text-slate-400 uppercase">Tgl Expired</Label>
+                                <Input type="date" {...register(`tangki.${index}.tgl_expired` as const)} className="h-9 rounded-xl text-[10px]" />
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+
                     </div>
                   </CardContent>
                 </Card>
@@ -955,7 +1057,7 @@ export function DocumentForm({ document, referenceData, onSubmit, isLoading = fa
             </div>
           </div>
         )}
-        {activeTab === 'waktu' && (
+        {activeTab === 'waktu' && !isAppendMode && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className={`border-slate-200 shadow-sm overflow-hidden border-l-4 ${flowType === 'IN' ? 'border-l-blue-500' : 'border-l-amber-500'}`}>
               <div className={`${bgAccent}/50 dark:bg-slate-900 border-b p-4`}>

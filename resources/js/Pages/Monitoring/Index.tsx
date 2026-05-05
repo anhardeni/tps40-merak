@@ -133,7 +133,8 @@ export default function MonitoringIndex() {
         const refNo = resp?.REF_NO?.RN;
         if (!refNo) return <p className="text-sm text-gray-500 italic">Tidak ada rincian REF_NUMBER</p>;
 
-        const rnList = Array.isArray(refNo) ? refNo : [refNo];
+        const rnList = Array.isArray(refNo) ? refNo.filter(n => n) : [refNo];
+        if (rnList.length === 0 || (rnList.length === 1 && !rnList[0])) return <p className="text-sm text-gray-500 italic">Tidak ada rincian REF_NUMBER</p>;
 
         return (
             <div className="mt-4 border rounded-md overflow-hidden shadow-sm">

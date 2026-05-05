@@ -8,11 +8,12 @@ use App\Models\KdGudang;
 use App\Models\KdTps;
 use App\Models\NmAngkut;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TangkiImport;
+use App\Models\KdDokInout;
+use App\Models\Tangki;
 use Inertia\Inertia;
 
 class DocumentController extends Controller
@@ -25,7 +26,6 @@ class DocumentController extends Controller
      */
     public function index(Request $request)
     {
-        Log::info('Document index accessed', ['search' => $request->search, 'user' => auth()->id()]);
         $query = Document::with(['nmAngkut'])
             ->withCount('tangki');
 
@@ -48,15 +48,15 @@ class DocumentController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Date filter - Default to last 6 months if not specified
-        $dateFrom = $request->date_from ?: now()->subMonths(6)->format('Y-m-d');
-        $dateTo = $request->date_to ?: now()->format('Y-m-d');
+        // Date filter
+        if ($request->date_from) {
+            $query->whereDate('tgl_entry', '>=', $request->date_from);
+        }
+        if ($request->date_to) {
+            $query->whereDate('tgl_entry', '<=', $request->date_to);
+        }
 
-        $query->whereDate('tgl_entry', '>=', $dateFrom);
-        $query->whereDate('tgl_entry', '<=', $dateTo);
-
-        $documents = $query->orderBy('tgl_entry', 'desc')
-            ->orderBy('created_at', 'desc')
+        $documents = $query->orderBy('created_at', 'desc')
             ->paginate(15)
             ->withQueryString();
 
@@ -78,12 +78,7 @@ class DocumentController extends Controller
                     'next' => $documents->nextPageUrl(),
                 ],
             ],
-            'filters' => [
-                'search' => $request->search,
-                'status' => $request->status,
-                'date_from' => $dateFrom,
-                'date_to' => $dateTo,
-            ],
+            'filters' => $request->only(['search', 'status', 'date_from', 'date_to']),
         ]);
     }
 
@@ -116,9 +111,10 @@ class DocumentController extends Controller
             'tgl_gate_out' => ['nullable', 'date'],
             'jam_gate_out' => ['nullable', 'string'],
             'keterangan' => ['nullable', 'string'],
+            'no_dok_ijin_tps' => ['nullable', 'string', 'max:35'],
+            'tgl_dok_ijin_tps' => ['nullable', 'date'],
             'tangki' => ['required', 'array', 'min:1'],
             'tangki.*.no_tangki' => ['required', 'string', 'max:50'],
-            'tangki.*.seri_out' => ['nullable', 'integer'],
             'tangki.*.no_bl_awb' => ['nullable', 'string', 'max:50'],
             'tangki.*.tgl_bl_awb' => ['nullable', 'date'],
             'tangki.*.id_consignee' => ['nullable', 'string', 'max:50'],
@@ -128,11 +124,13 @@ class DocumentController extends Controller
             'tangki.*.no_pos_bc11' => ['nullable', 'string', 'max:10'],
             'tangki.*.jml_satuan' => ['nullable', 'numeric', 'min:0'],
             'tangki.*.jns_satuan' => ['nullable', 'string', 'max:10'],
-            'tangki.*.kd_dok_inout' => ['nullable', 'string', 'max:10'],
+            'tangki.*.kd_dok_inout' => ['nullable', 'string', 'max:50'],
             'tangki.*.no_dok_inout' => ['nullable', 'string', 'max:50'],
             'tangki.*.tgl_dok_inout' => ['nullable', 'date'],
-            'tangki.*.kd_sar_angkut_inout' => ['nullable', 'string', 'max:10'],
-            'tangki.*.no_pol' => ['nullable', 'string', 'max:20'],
+            'tangki.*.kd_sar_angkut_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_pol' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_dok_ijin_tps' => ['nullable', 'string', 'max:35'],
+            'tangki.*.tgl_dok_ijin_tps' => ['nullable', 'date'],
             'tangki.*.jenis_isi' => ['required', 'string', 'max:200'],
             'tangki.*.jenis_kemasan' => ['nullable', 'string', 'max:100'],
             'tangki.*.kapasitas' => ['required', 'numeric', 'min:0'],
@@ -174,8 +172,12 @@ class DocumentController extends Controller
                 'tgl_gate_out' => $validated['tgl_gate_out'],
                 'jam_gate_out' => $validated['jam_gate_out'],
                 'keterangan' => $validated['keterangan'],
+                'no_dok_ijin_tps' => $validated['no_dok_ijin_tps'],
+                'tgl_dok_ijin_tps' => $validated['tgl_dok_ijin_tps'],
                 'status' => 'DRAFT',
                 'username' => auth()->user()->name ?? 'system',
+                'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
             ]);
 
             // Create tangki
@@ -251,9 +253,10 @@ class DocumentController extends Controller
             'tgl_gate_out' => ['nullable', 'date'],
             'jam_gate_out' => ['nullable', 'string'],
             'keterangan' => ['nullable', 'string'],
+            'no_dok_ijin_tps' => ['nullable', 'string', 'max:35'],
+            'tgl_dok_ijin_tps' => ['nullable', 'date'],
             'tangki' => ['required', 'array', 'min:1'],
             'tangki.*.no_tangki' => ['required', 'string', 'max:50'],
-            'tangki.*.seri_out' => ['nullable', 'integer'],
             'tangki.*.no_bl_awb' => ['nullable', 'string', 'max:50'],
             'tangki.*.tgl_bl_awb' => ['nullable', 'date'],
             'tangki.*.id_consignee' => ['nullable', 'string', 'max:50'],
@@ -263,11 +266,13 @@ class DocumentController extends Controller
             'tangki.*.no_pos_bc11' => ['nullable', 'string', 'max:10'],
             'tangki.*.jml_satuan' => ['nullable', 'numeric', 'min:0'],
             'tangki.*.jns_satuan' => ['nullable', 'string', 'max:10'],
-            'tangki.*.kd_dok_inout' => ['nullable', 'string', 'max:10'],
+            'tangki.*.kd_dok_inout' => ['nullable', 'string', 'max:50'],
             'tangki.*.no_dok_inout' => ['nullable', 'string', 'max:50'],
             'tangki.*.tgl_dok_inout' => ['nullable', 'date'],
-            'tangki.*.kd_sar_angkut_inout' => ['nullable', 'string', 'max:10'],
-            'tangki.*.no_pol' => ['nullable', 'string', 'max:20'],
+            'tangki.*.kd_sar_angkut_inout' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_pol' => ['nullable', 'string', 'max:50'],
+            'tangki.*.no_dok_ijin_tps' => ['nullable', 'string', 'max:35'],
+            'tangki.*.tgl_dok_ijin_tps' => ['nullable', 'date'],
             'tangki.*.jenis_isi' => ['required', 'string', 'max:200'],
             'tangki.*.jenis_kemasan' => ['nullable', 'string', 'max:100'],
             'tangki.*.kapasitas' => ['required', 'numeric', 'min:0'],
@@ -308,6 +313,9 @@ class DocumentController extends Controller
                 'tgl_gate_out' => $validated['tgl_gate_out'],
                 'jam_gate_out' => $validated['jam_gate_out'],
                 'keterangan' => $validated['keterangan'],
+                'no_dok_ijin_tps' => $validated['no_dok_ijin_tps'] ?? null,
+                'tgl_dok_ijin_tps' => $validated['tgl_dok_ijin_tps'] ?? null,
+                'updated_by' => auth()->id(),
             ]);
 
             // Delete existing tangki and recreate
@@ -434,7 +442,9 @@ class DocumentController extends Controller
             'kdDok' => KdDok::select('kd_dok', 'nm_dok')->get(),
             'kdTps' => KdTps::select('kd_tps', 'nm_tps')->get(),
             'nmAngkut' => NmAngkut::select('id', 'nm_angkut', 'call_sign')->get(),
-            'kdGudang' => KdGudang::select('kd_gudang', 'nm_gudang')->get(),
+            'kdGudang' => KdGudang::select('kd_gudang', 'nm_gudang', 'kd_tps')->get(),
+            'kdDokInout' => KdDokInout::select('kd_dok_inout', 'nm_dok_inout', 'jenis')->get(),
+            'tangkiList' => Tangki::distinct()->pluck('no_tangki')->toArray(),
         ];
     }
 }

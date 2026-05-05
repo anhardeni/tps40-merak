@@ -64,8 +64,8 @@ const levelConfig: Record<string, { label: string; variant: 'secondary' | 'defau
 }
 
 export default function LogIndex({ auth, logFiles, selectedLog, logEntries, pagination, filters }: LogIndexProps) {
-  const [search, setSearch] = useState(filters.search || '')
-  const [level, setLevel] = useState(filters.level || '')
+  const [search, setSearch] = useState(filters?.search || '')
+  const [level, setLevel] = useState(filters?.level || '')
   const [selectedEntry, setSelectedEntry] = useState<LogEntry | null>(null)
 
   const handleSearch = () => {
@@ -161,7 +161,7 @@ export default function LogIndex({ auth, logFiles, selectedLog, logEntries, pagi
               </CardHeader>
               <CardContent className="p-0">
                 <div className="space-y-1">
-                  {logFiles.map((file) => (
+                  {(logFiles || []).map((file) => (
                     <button
                       key={file.name}
                       onClick={() => handleFileSelect(file.name)}
@@ -282,18 +282,19 @@ export default function LogIndex({ auth, logFiles, selectedLog, logEntries, pagi
             <Card>
               <CardHeader>
                 <CardTitle>
-                  Log Entries ({pagination.total}) - {selectedLog}
+                  Log Entries ({pagination?.total || 0}) - {selectedLog}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {logEntries.length === 0 ? (
+                {(!logEntries || logEntries.length === 0) ? (
                   <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                     <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No log entries found</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {logEntries.map((entry, index) => {
+                    {(logEntries || []).map((entry, index) => {
+                      if (!entry) return null;
                       const config = levelConfig[entry.level] || levelConfig.info
                       const Icon = config.icon
 
@@ -330,21 +331,21 @@ export default function LogIndex({ auth, logFiles, selectedLog, logEntries, pagi
                     })}
 
                     {/* Pagination */}
-                    {pagination.last_page > 1 && (
+                    {(pagination?.last_page ?? 0) > 1 && (
                       <div className="flex items-center justify-between pt-4 border-t">
                         <div className="text-sm text-slate-600 dark:text-slate-400">
-                          Showing {((pagination.current_page - 1) * pagination.per_page) + 1} to{' '}
-                          {Math.min(pagination.current_page * pagination.per_page, pagination.total)} of{' '}
-                          {pagination.total} entries
+                          Showing {((pagination?.current_page - 1) * pagination?.per_page) + 1} to{' '}
+                          {Math.min(pagination?.current_page * pagination?.per_page, pagination?.total)} of{' '}
+                          {pagination?.total} entries
                         </div>
                         <div className="flex items-center gap-2">
-                          {pagination.current_page > 1 && (
+                          {pagination?.current_page > 1 && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => router.get('/logs', {
                                 file: selectedLog,
-                                page: pagination.current_page - 1,
+                                page: (pagination?.current_page || 1) - 1,
                                 search,
                                 level
                               })}
@@ -353,15 +354,15 @@ export default function LogIndex({ auth, logFiles, selectedLog, logEntries, pagi
                             </Button>
                           )}
                           <span className="px-3 py-1 text-sm">
-                            Page {pagination.current_page} of {pagination.last_page}
+                            Page {pagination?.current_page} of {pagination?.last_page}
                           </span>
-                          {pagination.current_page < pagination.last_page && (
+                          {pagination?.current_page < pagination?.last_page && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => router.get('/logs', {
                                 file: selectedLog,
-                                page: pagination.current_page + 1,
+                                page: (pagination?.current_page || 1) + 1,
                                 search,
                                 level
                               })}

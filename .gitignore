@@ -10,6 +10,7 @@
 /storage/*.key
 /storage/pail
 /vendor
+/app/pdfs
 .env
 .env.backup
 .env.production
@@ -25,3 +26,6 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/app/pdfs
+/.agents
+/.skills

@@ -266,7 +266,8 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                       </thead>
                       <tbody>
                         {documents.data.map((document) => {
-                          const StatusIcon = statusConfig[document.status.toLowerCase()]?.icon || Clock
+                          const statusKey = (document.status || 'draft').toLowerCase()
+                          const StatusIcon = statusConfig[statusKey]?.icon || Clock
                           return (
                             <tr key={document.id} className="border-b hover:bg-slate-50 dark:hover:bg-slate-900">
                               <td className="p-4">
@@ -291,11 +292,11 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                               </td>
                               <td className="p-4">
                                 <Badge
-                                  variant={statusConfig[document.status.toLowerCase()]?.variant || 'secondary'}
+                                  variant={statusConfig[(document.status || 'draft').toLowerCase()]?.variant || 'secondary'}
                                   className="flex items-center gap-1 w-fit"
                                 >
                                   <StatusIcon className="w-3 h-3" />
-                                  {statusConfig[document.status.toLowerCase()]?.label || document.status}
+                                  {statusConfig[(document.status || 'draft').toLowerCase()]?.label || document.status}
                                 </Badge>
                               </td><td className="p-4">
                                 <div className="flex items-center gap-2">
@@ -376,7 +377,8 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                 {/* Mobile view */}
                 <div className="lg:hidden space-y-4">
                   {documents.data.map((document) => {
-                    const StatusIcon = statusConfig[document.status.toLowerCase()]?.icon || Clock
+                    const statusKey = (document.status || 'draft').toLowerCase()
+                    const StatusIcon = statusConfig[statusKey]?.icon || Clock
                     return (
                       <Card key={document.id} className="p-4">
                         <div className="flex items-start justify-between mb-3">
@@ -387,11 +389,11 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
                             </div>
                           </div>
                           <Badge
-                            variant={statusConfig[document.status.toLowerCase()]?.variant || 'secondary'}
+                            variant={statusConfig[(document.status || 'draft').toLowerCase()]?.variant || 'secondary'}
                             className="flex items-center gap-1"
                           >
                             <StatusIcon className="w-3 h-3" />
-                            {statusConfig[document.status.toLowerCase()]?.label || document.status}
+                            {statusConfig[(document.status || 'draft').toLowerCase()]?.label || document.status}
                           </Badge>
                         </div>
 
@@ -514,4 +516,3 @@ export default function IndexDocument({ auth, documents, filters }: IndexDocumen
     </AppLayout>
   )
 }
-

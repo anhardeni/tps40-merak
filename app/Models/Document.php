@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\IsolatableByLocation;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Document extends Model
 {
-    use HasFactory;
+    use HasFactory, IsolatableByLocation;
 
     protected $fillable = [
         'ref_number',
@@ -43,6 +44,8 @@ class Document extends Model
         'cocotangki_sent_at',
         'cocotangki_response',
         'cocotangki_error',
+        'no_dok_ijin_tps',
+        'tgl_dok_ijin_tps',
     ];
 
     protected $casts = [
@@ -58,12 +61,13 @@ class Document extends Model
         'sppb_checked_at' => 'datetime',
         'sent_at' => 'datetime',
         'sent_to_host' => 'boolean',
+        'tgl_dok_ijin_tps' => 'date',
     ];
 
     // Generate reference number format: AAAAYYMMDDNNNNNN
     public static function generateRefNumber(): string
     {
-        $prefix = 'TPSO'; // 4 karakter
+        $prefix = 'KOC1'; // 4 karakter
         $year = date('y'); // 2 digit tahun
         $month = date('m'); // 2 digit bulan
         $day = date('d'); // 2 digit hari

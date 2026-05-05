@@ -34,20 +34,16 @@ interface Tangki {
   no_tangki: string
   kapasitas: number
   jenis_isi: string
-  jml_satuan: number
-  jns_satuan: string
+  kd_dok_inout: string
+  satuan: string
+  jumlah_isi: number
   berat_isi: number
   seri_out?: string
-  wk_inout?: string
   no_bl_awb?: string
   consignee?: string
-  id_consignee?: string
-  no_bc11?: string
-  tgl_bc11?: string
-  no_pos_bc11?: string
   pel_muat?: string
-  pel_transit?: string
-  pel_bongkar?: string
+  wk_inout?: string
+  keterangan?: string
 }
 
 interface Document {
@@ -55,46 +51,50 @@ interface Document {
   ref_number: string
   kd_dok: string
   tgl_entry: string
-  nm_angkut?: {
-    nm_angkut: string
-  }
   no_voy_flight?: string
   call_sign?: string
   tgl_tiba?: string
-  pel_muat?: string
+  pel_asal?: string
   pel_transit?: string
   pel_bongkar?: string
-  kd_gudang?: string | { kd_gudang?: string; nm_gudang?: string }
-  kd_tps?: string | { kd_tps?: string; nm_tps?: string }
+  kd_gudang?: string
+  kd_tps?: string
   status: string
   tangki: Tangki[]
   cocotangki_status?: string
   cocotangki_sent_at?: string
   cocotangki_response?: any
   cocotangki_error?: string
-  xml_preview?: string
+  nm_angkut?: {
+    nm_angkut: string
+    call_sign: string
+  }
+  kd_tps_relation?: {
+    nm_tps: string
+  }
+  kd_gudang_relation?: {
+    nm_gudang: string
+  }
 }
 
-interface ValidationProp {
+interface ValidationResult {
   valid: boolean
   errors: string[]
-  warnings?: string[]
+  warnings: string[]
 }
 
-interface SubmissionStatusProp {
-  document_id: number
-  ref_number: string
+interface SubmissionStatus {
   status: string
   sent_at?: string
+  response?: string
   error?: string
-  response?: any
-  tangki_count: number
 }
 
 interface Props {
   document: Document
-  validation?: ValidationProp
-  submission_status?: SubmissionStatusProp
+  validation: ValidationResult
+  submission_status: SubmissionStatus
+  xml_preview?: string
 }
 
 const breadcrumbs = [
@@ -114,9 +114,9 @@ const getStatusBadge = (status?: string) => {
   }
 }
 
-export default function CoCoTangkiShow({ document, validation, submission_status }: Props) {
-  const [xmlVisible, setXmlVisible] = useState(false)
-  const [activeTab, setActiveTab] = useState('document')
+export default function CoCoTangkiShow({ document, validation, submission_status, xml_preview }: Props) {
+  const [xmlVisible, setXmlVisible] = useState(!!xml_preview)
+  const [activeTab, setActiveTab] = useState(xml_preview ? 'xml' : 'document')
 
   const handleSend = () => {
     if (confirm('Kirim dokumen ini ke CoCoTangki?')) {
@@ -163,15 +163,15 @@ export default function CoCoTangkiShow({ document, validation, submission_status
             </div>
           </div>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => router.get(`/cocotangki/${document.id}/download`)}
             >
               <Download className="w-4 h-4 mr-2" />
               Download XML
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleGenerateXml}
             >
               <Eye className="w-4 h-4 mr-2" />
@@ -200,12 +200,12 @@ export default function CoCoTangkiShow({ document, validation, submission_status
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <Badge 
+              <Badge
                 variant={document.status === 'APPROVED' ? 'default' : 'secondary'}
                 className={
                   document.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                  document.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800' :
-                  'bg-gray-100 text-gray-800'
+                    document.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
                 }
               >
                 {document.status}
@@ -229,7 +229,7 @@ export default function CoCoTangkiShow({ document, validation, submission_status
               <Database className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{document.tangki.length}</div>
+              <div className="text-2xl font-bold">{document.tangki?.length || 0}</div>
             </CardContent>
           </Card>
 
@@ -240,7 +240,7 @@ export default function CoCoTangkiShow({ document, validation, submission_status
             </CardHeader>
             <CardContent>
               <div className="text-sm">
-                {document.cocotangki_sent_at 
+                {document.cocotangki_sent_at
                   ? new Date(document.cocotangki_sent_at).toLocaleString('id-ID')
                   : 'Belum dikirim'
                 }
@@ -277,9 +277,11 @@ export default function CoCoTangkiShow({ document, validation, submission_status
             </CardHeader>
             <CardContent>
               <div className="text-green-700 text-sm">
-                {typeof document.cocotangki_response === 'object' 
-                  ? (document.cocotangki_response.message || JSON.stringify(document.cocotangki_response)) 
-                  : document.cocotangki_response}
+                <pre className="whitespace-pre-wrap font-mono text-xs">
+                  {typeof document.cocotangki_response === 'object'
+                    ? JSON.stringify(document.cocotangki_response, null, 2)
+                    : document.cocotangki_response}
+                </pre>
               </div>
             </CardContent>
           </Card>
@@ -300,12 +302,12 @@ export default function CoCoTangkiShow({ document, validation, submission_status
                   {validation.valid ? (
                     <Badge className="bg-green-100 text-green-800">
                       <CheckCircle className="w-3 h-3 mr-1" />
-                      Valid
+                      Data Valid
                     </Badge>
                   ) : (
                     <Badge className="bg-red-100 text-red-800">
                       <AlertCircle className="w-3 h-3 mr-1" />
-                      Tidak Valid
+                      Perlu Perbaikan
                     </Badge>
                   )}
                 </div>
@@ -344,18 +346,17 @@ export default function CoCoTangkiShow({ document, validation, submission_status
                 const isActive = activeTab === tab
                 const tabNames = {
                   document: 'Data Dokumen',
-                  tangki: 'Data Tangki', 
+                  tangki: 'Data Tangki',
                   xml: 'Preview XML'
                 }
                 return (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                      isActive
+                    className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${isActive
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
+                      }`}
                   >
                     {tabNames[tab as keyof typeof tabNames]}
                   </button>
@@ -394,18 +395,18 @@ export default function CoCoTangkiShow({ document, validation, submission_status
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-600">Call Sign</label>
-                      <div>{document.call_sign || '-'}</div>
+                      <div>{document.nm_angkut?.call_sign || '-'}</div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium text-slate-600">Tanggal Tiba</label>
                       <div>{document.tgl_tiba ? new Date(document.tgl_tiba).toLocaleDateString('id-ID') : '-'}</div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-slate-600">Pelabuhan Muat</label>
-                      <div>{document.pel_muat || '-'}</div>
+                      <label className="text-sm font-medium text-slate-600">Pelabuhan Asal</label>
+                      <div>{document.pel_asal || '-'}</div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-600">Pelabuhan Transit</label>
@@ -417,11 +418,19 @@ export default function CoCoTangkiShow({ document, validation, submission_status
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-600">Gudang TPS</label>
-                      <div>{typeof document.kd_gudang === 'object' ? document.kd_gudang?.kd_gudang : (document.kd_gudang || '-')}</div>
+                      <div>
+                        {typeof document.kd_gudang === 'object' 
+                          ? (document.kd_gudang?.nm_gudang || document.kd_gudang?.kd_gudang) 
+                          : (document.kd_gudang || '-')}
+                      </div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-600">TPS</label>
-                      <div>{typeof document.kd_tps === 'object' ? document.kd_tps?.kd_tps : (document.kd_tps || '-')}</div>
+                      <div>
+                        {typeof document.kd_tps === 'object' 
+                          ? (document.kd_tps?.nm_tps || document.kd_tps?.kd_tps) 
+                          : (document.kd_tps || '-')}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -441,25 +450,23 @@ export default function CoCoTangkiShow({ document, validation, submission_status
                       <TableHead>No. Tangki</TableHead>
                       <TableHead>Kapasitas</TableHead>
                       <TableHead>Jenis Isi</TableHead>
-                      <TableHead>Jumlah Satuan</TableHead>
-                      <TableHead>Satuan</TableHead>
-                      <TableHead>Berat Isi</TableHead>
+                      <TableHead>Volume/Isi</TableHead>
+                      <TableHead>Berat</TableHead>
                       <TableHead>Seri Out</TableHead>
                       <TableHead>Consignee</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {document.tangki.map((tangki) => (
+                    {document.tangki?.map((tangki) => (
                       <TableRow key={tangki.id}>
                         <TableCell className="font-mono">{tangki.no_tangki}</TableCell>
-                        <TableCell>{tangki.kapasitas?.toLocaleString() || '-'}</TableCell>
+                        <TableCell>{(tangki.kapasitas || 0).toLocaleString()}</TableCell>
                         <TableCell>{tangki.jenis_isi}</TableCell>
-                        <TableCell>{tangki.jml_satuan?.toLocaleString() || '-'}</TableCell>
-                        <TableCell>{tangki.jns_satuan}</TableCell>
-                        <TableCell>{tangki.berat_isi?.toLocaleString() || '-'}</TableCell>
+                        <TableCell>{(tangki.jumlah_isi || 0).toLocaleString()} {tangki.satuan}</TableCell>
+                        <TableCell>{(tangki.berat_isi || 0).toLocaleString()} KGM</TableCell>
                         <TableCell>{tangki.seri_out || '-'}</TableCell>
                         <TableCell>
-                          <div className="text-sm italic">
+                          <div className="text-sm">
                             {tangki.consignee || '-'}
                           </div>
                         </TableCell>
@@ -476,9 +483,9 @@ export default function CoCoTangkiShow({ document, validation, submission_status
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   Preview XML CoCoTangki
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleGenerateXml}
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
@@ -487,10 +494,10 @@ export default function CoCoTangkiShow({ document, validation, submission_status
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {document.xml_preview ? (
+                {xml_preview || document.xml_preview ? (
                   <div className="bg-slate-100 rounded-lg p-4 overflow-x-auto">
                     <pre className="text-sm text-slate-800">
-                      <code>{document.xml_preview}</code>
+                      <code>{xml_preview || document.xml_preview}</code>
                     </pre>
                   </div>
                 ) : (

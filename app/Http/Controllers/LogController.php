@@ -63,47 +63,37 @@ class LogController extends Controller
     {
         $query = \App\Models\SoapLog::query();
 
-        // Filter by status using when() to avoid filtering on empty strings
-        $query->when($request->status, function ($q, $status) {
-            $q->where('response_status', $status);
-        });
+        // Filter by status
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
 
         // Filter by date range
-        $query->when($request->date_from, function ($q, $dateFrom) {
-            $q->whereDate('created_at', '>=', $dateFrom);
-        });
+        if ($request->has('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
 
-        $query->when($request->date_to, function ($q, $dateTo) {
-            $q->whereDate('created_at', '<=', $dateTo);
-        });
+        if ($request->has('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
 
         // Search functionality
-        $query->when($request->search, function ($q, $search) {
-            $q->where(function ($q) use ($search) {
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
                 $q->where('method', 'like', "%{$search}%")
                     ->orWhere('endpoint', 'like', "%{$search}%")
                     ->orWhere('request_data', 'like', "%{$search}%")
                     ->orWhere('response_data', 'like', "%{$search}%");
             });
-        });
+        }
 
         $soapLogs = $query->orderBy('created_at', 'desc')
             ->paginate(25)
             ->withQueryString();
 
         return Inertia::render('Logs/SoapLogs', [
-            'soapLogs' => [
-                'data' => $soapLogs->items(),
-                'meta' => [
-                    'current_page' => $soapLogs->currentPage(),
-                    'from' => $soapLogs->firstItem(),
-                    'last_page' => $soapLogs->lastPage(),
-                    'per_page' => $soapLogs->perPage(),
-                    'to' => $soapLogs->lastItem(),
-                    'total' => $soapLogs->total(),
-                ],
-                'links' => $soapLogs->linkCollection()->toArray(),
-            ],
+            'soapLogs' => $soapLogs,
             'filters' => $request->only(['status', 'date_from', 'date_to', 'search']),
         ]);
     }
@@ -190,14 +180,10 @@ class LogController extends Controller
         \App\Models\SoapLog::create([
             'method' => 'CekDataSPPB',
             'endpoint' => 'https://tpsonline.beacukai.go.id/tps/service.asmx',
-            'request_data' => ['sppb_number' => 'TEST001', 'test' => true],
-            'request_xml' => '<?xml version="1.0" encoding="utf-8"?><Envelope>...</Envelope>',
-            'request_time' => now(),
-            'response_data' => ['status' => 'success', 'data' => 'Test response'],
-            'response_xml' => '<?xml version="1.0" encoding="utf-8"?><Result>...</Result>',
-            'response_time' => now(),
-            'response_status' => 'SUCCESS',
-            'duration_ms' => 150.5,
+            'request_data' => json_encode(['sppb_number' => 'TEST001', 'test' => true]),
+            'response_data' => json_encode(['status' => 'success', 'data' => 'Test response']),
+            'status' => 'success',
+            'response_time' => 150.5,
         ]);
 
         return back()->with('success', 'Test log entries created successfully');
@@ -280,8 +266,25 @@ class LogController extends Controller
             return [];
         }
 
-        $content = File::get($logPath);
-        $lines = explode("\n", $content);
+        // Optimization: If file is larger than 2MB, only read the last 2MB
+        $fileSize = File::size($logPath);
+        if ($fileSize > 2 * 1024 * 1024) {
+            $handle = fopen($logPath, "r");
+            if ($handle !== false) {
+                fseek($handle, -2 * 1024 * 1024, SEEK_END);
+                $content = fread($handle, 2 * 1024 * 1024);
+                fclose($handle);
+            } else {
+                $content = '';
+            }
+            $lines = explode("\n", $content);
+            // Discard the first partial line
+            array_shift($lines);
+        } else {
+            $content = File::get($logPath);
+            $lines = explode("\n", $content);
+        }
+
         $entries = [];
         $currentEntry = null;
 
@@ -291,7 +294,7 @@ class LogController extends Controller
             }
 
             // Check if line starts with timestamp pattern
-            if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (\w+)\.(\w+): (.*)$/', $line, $matches)) {
+            if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] ([a-zA-Z0-9_-]+)\.([a-zA-Z0-9_]+): (.*)$/', $line, $matches)) {
                 // Save previous entry if exists
                 if ($currentEntry) {
                     $entries[] = $currentEntry;
@@ -303,21 +306,21 @@ class LogController extends Controller
                 // Skip if level filter is set and doesn't match
                 if ($levels && ! in_array($level, $levels)) {
                     $currentEntry = null;
-
                     continue;
                 }
 
                 $currentEntry = [
-                    'timestamp' => $matches[1],
-                    'environment' => $matches[2],
+                    'timestamp' => $matches[1] ?? now()->format('Y-m-d H:i:s'),
+                    'environment' => $matches[2] ?? 'local',
                     'level' => $level,
-                    'message' => $matches[4],
+                    'message' => $matches[4] ?? '',
                     'context' => '',
                     'stack_trace' => '',
                 ];
             } elseif ($currentEntry) {
                 // Continuation of previous entry
-                if (strpos($line, 'Stack trace:') !== false || strpos($line, '#0 ') !== false) {
+                // If it starts with Stack trace, #number, or if we're already writing to stack_trace
+                if (strpos($line, 'Stack trace:') !== false || preg_match('/^#\d+ /', $line) || $currentEntry['stack_trace'] !== '') {
                     $currentEntry['stack_trace'] .= $line."\n";
                 } else {
                     $currentEntry['context'] .= $line."\n";
@@ -338,6 +341,9 @@ class LogController extends Controller
      */
     private function formatBytes($size, $precision = 2)
     {
+        if ($size <= 0) {
+            return '0 B';
+        }
         $base = log($size, 1024);
         $suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
 

@@ -17,8 +17,8 @@ type ColorBendsProps = {
     noise?: number;
 };
 
-// Default colors if none provided
-const DEFAULT_COLORS = ['#6366f1', '#475569', '#64748b', '#3b82f6'];
+// iPhone 17 Pro Titanium Palette
+const DEFAULT_COLORS = ['#C7B496', '#1A1A1A', '#A2A2A2', '#474747'];
 
 const vert = `
 varying vec2 vUv;

@@ -63,22 +63,14 @@ class XmlJsonGeneratorService
                 $this->addElement($dom, $tangkiElement, 'TGL_BC11', $tangki->tgl_bc11 ? $tangki->tgl_bc11->format('Ymd') : '');
                 $this->addElement($dom, $tangkiElement, 'NO_POS_BC11', $tangki->no_pos_bc11 ?? '');
                 $this->addElement($dom, $tangkiElement, 'NO_TANGKI', $tangki->no_tangki);
-                $this->addElement($dom, $tangkiElement, 'JML_SATUAN', (string) $tangki->jumlah_isi);
+                $this->addElement($dom, $tangkiElement, 'JML_SATUAN', (float) $tangki->jumlah_isi);
                 $this->addElement($dom, $tangkiElement, 'JNS_SATUAN', $tangki->satuan);
 
-                // References untuk dokumen in/out
-                $reference = $tangki->tangkiReferences->first();
-                if ($reference) {
-                    $this->addElement($dom, $tangkiElement, 'KD_DOK_INOUT', $reference->kd_dok_inout ?? '');
-                    $this->addElement($dom, $tangkiElement, 'NO_DOK_INOUT', $reference->ref_number ?? '');
-                    $this->addElement($dom, $tangkiElement, 'TGL_DOK_INOUT', $reference->ref_date ? $reference->ref_date->format('YmdH') : '');
-                    $this->addElement($dom, $tangkiElement, 'KD_SAR_ANGKUT_INOUT', $reference->kd_sar_angkut_inout ?? '');
-                } else {
-                    $this->addElement($dom, $tangkiElement, 'KD_DOK_INOUT', '');
-                    $this->addElement($dom, $tangkiElement, 'NO_DOK_INOUT', '');
-                    $this->addElement($dom, $tangkiElement, 'TGL_DOK_INOUT', '');
-                    $this->addElement($dom, $tangkiElement, 'KD_SAR_ANGKUT_INOUT', '');
-                }
+                // References untuk dokumen in/out (mengambil langsung dari tabel tangki)
+                $this->addElement($dom, $tangkiElement, 'KD_DOK_INOUT', $tangki->kd_dok_inout ?? '');
+                $this->addElement($dom, $tangkiElement, 'NO_DOK_INOUT', $tangki->no_dok_inout ?? '');
+                $this->addElement($dom, $tangkiElement, 'TGL_DOK_INOUT', $tangki->tgl_dok_inout ? $tangki->tgl_dok_inout->format('Ymd') : '');
+                $this->addElement($dom, $tangkiElement, 'KD_SAR_ANGKUT_INOUT', $tangki->kd_sar_angkut_inout ?? '');
 
                 $this->addElement($dom, $tangkiElement, 'WK_INOUT', $this->formatDateTime($tangki->wk_inout));
                 $this->addElement($dom, $tangkiElement, 'NO_POL', $tangki->no_pol ?? '');

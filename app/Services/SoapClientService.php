@@ -70,7 +70,7 @@ class SoapClientService
             $response = $this->client->post($this->endpoint, [
                 'body' => $soapXml,
                 'headers' => [
-                    'SOAPAction' => 'http://tempuri.org/CekDataSPPB',
+                    'SOAPAction' => 'http://services.beacukai.go.id/CekDataSPPB',
                 ],
             ]);
 
@@ -162,7 +162,7 @@ class SoapClientService
             $response = $this->client->post($this->endpoint, [
                 'body' => $soapXml,
                 'headers' => [
-                    'SOAPAction' => 'http://tempuri.org/CekDataSPPB_TPB',
+                    'SOAPAction' => 'http://services.beacukai.go.id/CekDataSPPB_TPB',
                 ],
             ]);
 
@@ -225,7 +225,7 @@ class SoapClientService
                        xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
                        xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
             <soap:Body>
-                <CekDataSPPB xmlns="http://tempuri.org/">
+                <CekDataSPPB xmlns="http://services.beacukai.go.id/">
                     <UserName>'.htmlspecialchars($this->username).'</UserName>
                     <PassWord>'.htmlspecialchars($this->password).'</PassWord>
                     <NoSPPB>'.htmlspecialchars($sppbNumber).'</NoSPPB>
@@ -244,7 +244,7 @@ class SoapClientService
                        xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
                        xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
             <soap:Body>
-                <CekDataSPPB_TPB xmlns="http://tempuri.org/">
+                <CekDataSPPB_TPB xmlns="http://services.beacukai.go.id/">
                     <UserName>'.htmlspecialchars($this->username).'</UserName>
                     <PassWord>'.htmlspecialchars($this->password).'</PassWord>
                     <NoSPPB>'.htmlspecialchars($sppbNumber).'</NoSPPB>

@@ -1,0 +1,7 @@
+<!-- converted from template_import_tangki.xlsx -->
+
+## Sheet: Worksheet
+| no_tangki | kd_dok_inout | jenis_isi | kapasitas | jumlah_isi | satuan | kondisi | no_bl_awb | tgl_bl_awb | id_consignee | consignee | no_bc11 | tgl_bc11 | no_pos_bc11 | no_dok_inout | tgl_dok_inout | kd_sar_angkut_inout | no_pol | jenis_kemasan | jml_satuan | jns_satuan | pel_muat | pel_transit | pel_bongkar | panjang | lebar | tinggi | berat_kosong | berat_isi | lokasi_penempatan | wk_inout | tgl_produksi | tgl_expired | no_segel_bc | no_segel_perusahaan | keterangan |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| TANGKI001 | 1 | MINYAK SAWIT | 5000 | 4500 | LITER | BAIK | BL12345 | 2024-01-15 | CONS001 | PT Contoh Consignee | BC11-001 | 2024-01-10 | 1 | DOK001 | 2024-01-12 | TRK | B1234CD | DRUM | 10 | KG | SGSIN | HKHKG | IDJKT | 200 | 150 | 180 | 500 | 5000 | GUDANG A-01 | 2024-01-12 10:00:00 | 2023-12-01 | 2025-12-01 | SEAL001 | SEAL-COMP-001 | Tangki dalam kondisi baik |
+| TANGKI002 | 2 | SOLAR | 3000 | 2800 | LITER | BAIK | BL12346 | 2024-01-16 | CONS002 | PT Lain Consignee | BC11-002 | 2024-01-11 | 2 | DOK002 | 2024-01-13 | CNT | B5678EF | TANGKI | 15 | KG | IDJKT |  | SGSIN | 250 | 200 | 220 | 800 | 3000 | GUDANG B-02 | 2024-01-13 14:30:00 | 2023-11-15 | 2025-11-15 | SEAL002 | SEAL-COMP-002 | Pengiriman normal |

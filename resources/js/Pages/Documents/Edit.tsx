@@ -13,18 +13,22 @@ interface EditDocumentProps {
     nmAngkut: Array<{ id: number; nm_angkut: string; call_sign?: string }>
     kdGudang: Array<{ kd_gudang: string; nm_gudang: string; kd_tps?: string }>
     kdDokInout: Array<{ kd_dok_inout: string; nm_dok_inout: string; jenis: string }>
+    tangkiList?: string[]
   }
 }
 
 export default function EditDocument({ auth, document, referenceData }: EditDocumentProps) {
   const handleSubmit = (data: any) => {
-    router.put(`/documents/${document.id}`, data, {
-      onSuccess: () => {
-        // Redirect akan dilakukan oleh controller
-      },
-      onError: (errors) => {
-        console.error('Error updating document:', errors)
-      }
+    return new Promise<void>((resolve, reject) => {
+      router.put(`/documents/${document.id}`, data, {
+        onSuccess: () => {
+          resolve()
+        },
+        onError: (errors) => {
+          console.error('Error updating document:', errors)
+          reject(errors)
+        }
+      })
     })
   }
 

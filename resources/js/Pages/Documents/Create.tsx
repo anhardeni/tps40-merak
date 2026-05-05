@@ -12,18 +12,22 @@ interface CreateDocumentProps {
     nmAngkut: Array<{ id: number; nm_angkut: string; call_sign?: string }>
     kdGudang: Array<{ kd_gudang: string; nm_gudang: string; kd_tps?: string }>
     kdDokInout: Array<{ kd_dok_inout: string; nm_dok_inout: string; jenis: string }>
+    tangkiList?: string[]
   }
 }
 
 export default function CreateDocument({ auth, referenceData }: CreateDocumentProps) {
   const handleSubmit = (data: any) => {
-    router.post('/documents', data, {
-      onSuccess: () => {
-        // Redirect akan dilakukan oleh controller
-      },
-      onError: (errors) => {
-        console.error('Error creating document:', errors)
-      }
+    return new Promise<void>((resolve, reject) => {
+      router.post('/documents', data, {
+        onSuccess: () => {
+          resolve()
+        },
+        onError: (errors) => {
+          console.error('Error creating document:', errors)
+          reject(errors)
+        }
+      })
     })
   }
 
