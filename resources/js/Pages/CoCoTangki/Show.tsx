@@ -419,16 +419,16 @@ export default function CoCoTangkiShow({ document, validation, submission_status
                     <div>
                       <label className="text-sm font-medium text-slate-600">Gudang TPS</label>
                       <div>
-                        {typeof document.kd_gudang === 'object' 
-                          ? (document.kd_gudang?.nm_gudang || document.kd_gudang?.kd_gudang) 
+                        {typeof (document as any).kd_gudang === 'object' 
+                          ? ((document as any).kd_gudang?.nm_gudang || (document as any).kd_gudang?.kd_gudang) 
                           : (document.kd_gudang || '-')}
                       </div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-slate-600">TPS</label>
                       <div>
-                        {typeof document.kd_tps === 'object' 
-                          ? (document.kd_tps?.nm_tps || document.kd_tps?.kd_tps) 
+                        {typeof (document as any).kd_tps === 'object' 
+                          ? ((document as any).kd_tps?.nm_tps || (document as any).kd_tps?.kd_tps) 
                           : (document.kd_tps || '-')}
                       </div>
                     </div>
@@ -494,10 +494,10 @@ export default function CoCoTangkiShow({ document, validation, submission_status
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {xml_preview || document.xml_preview ? (
+                {xml_preview ? (
                   <div className="bg-slate-100 rounded-lg p-4 overflow-x-auto">
                     <pre className="text-sm text-slate-800">
-                      <code>{xml_preview || document.xml_preview}</code>
+                      <code>{xml_preview}</code>
                     </pre>
                   </div>
                 ) : (

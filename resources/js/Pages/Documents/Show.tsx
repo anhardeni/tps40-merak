@@ -404,7 +404,7 @@ export default function ShowDocument({ auth, document }: ShowDocumentProps) {
 
           {activeTab === 'tangki' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {document.status !== 'DRAFT' && (
+              {document.status !== 'draft' && (
                 <div className="bg-slate-900 text-white flex items-center justify-between p-2 rounded-2xl border border-slate-800 shadow-xl">
                   <div className="flex items-center gap-1 pl-4">
                     <Package className="w-5 h-5 text-indigo-400" />

@@ -67,7 +67,7 @@ class Document extends Model
     // Generate reference number format: AAAAYYMMDDNNNNNN
     public static function generateRefNumber(): string
     {
-        $prefix = 'KOC1'; // 4 karakter
+        $prefix = 'A019'; // 4 karakter
         $year = date('y'); // 2 digit tahun
         $month = date('m'); // 2 digit bulan
         $day = date('d'); // 2 digit hari
@@ -145,7 +145,7 @@ class Document extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            if (empty($model->ref_number)) {
+            if (empty($model->ref_number) || trim($model->ref_number) === '-') {
                 $model->ref_number = static::generateRefNumber();
             }
         });

@@ -95,7 +95,7 @@ export default function Welcome({ auth }: PageProps) {
                                 className="group relative flex items-center gap-2 overflow-hidden rounded-full bg-[#C7B496] px-8 py-3 text-black transition-all hover:bg-[#E3D1B5] hover:shadow-[0_0_25px_rgba(199,180,150,0.6)]"
                             >
                                 <Zap size={18} className="animate-bounce" />
-                                <span className="font-black tracking-widest uppercase">Access Core</span>
+                                <span className="font-black tracking-widest uppercase">Access Sign-In</span>
                             </Link>
                         )}
                     </nav>

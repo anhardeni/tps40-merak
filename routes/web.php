@@ -34,6 +34,22 @@ Route::middleware('auth')->group(function () {
     Route::get('/documents/template/download', [\App\Http\Controllers\DocumentController::class, 'downloadTemplate'])->name('documents.download-template');
     Route::get('/documents/{document}/add-tangki', [\App\Http\Controllers\DocumentController::class, 'addTangkiPage'])->name('documents.add-tangki');
     Route::post('/documents/{document}/append-tangki', [\App\Http\Controllers\DocumentController::class, 'appendTangki'])->name('documents.append-tangki');
+
+    // Pemasukan Routes
+    Route::prefix('pemasukan')->name('pemasukan.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\PemasukanController::class, 'index'])->name('index');
+        Route::post('/import-preview', [\App\Http\Controllers\PemasukanController::class, 'importPreview'])->name('import-preview');
+        Route::post('/import-confirm', [\App\Http\Controllers\PemasukanController::class, 'importConfirm'])->name('import-confirm');
+        Route::delete('/{document}', [\App\Http\Controllers\PemasukanController::class, 'destroy'])->name('destroy');
+    });
+
+    // Pengeluaran Routes
+    Route::prefix('pengeluaran')->name('pengeluaran.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\PengeluaranController::class, 'index'])->name('index');
+        Route::post('/import-preview', [\App\Http\Controllers\PengeluaranController::class, 'importPreview'])->name('import-preview');
+        Route::post('/import-confirm', [\App\Http\Controllers\PengeluaranController::class, 'importConfirm'])->name('import-confirm');
+        Route::delete('/{document}', [\App\Http\Controllers\PengeluaranController::class, 'destroy'])->name('destroy');
+    });
     // Export Routes - Preview and Download XML/JSON
     Route::prefix('api/export')->name('export.')->group(function () {
         // XML exports - available for all authenticated users
@@ -74,6 +90,24 @@ Route::middleware('auth')->group(function () {
             Route::post('/{document}/send', [App\Http\Controllers\CoCoTangkiController::class, 'send'])->name('send');
             Route::post('/send-bulk', [App\Http\Controllers\CoCoTangkiController::class, 'sendBulk'])->name('send-bulk');
             Route::post('/{document}/retry', [App\Http\Controllers\CoCoTangkiController::class, 'retry'])->name('retry');
+        });
+    });
+
+    // Kontainer REST Routes
+    Route::prefix('kontainer')->name('kontainer.')->group(function () {
+        Route::middleware('permission:kontainer.create')->group(function () {
+            Route::get('/create', [\App\Http\Controllers\KontainerController::class, 'create'])->name('create');
+            Route::post('/', [\App\Http\Controllers\KontainerController::class, 'store'])->name('store');
+            Route::post('/import', [\App\Http\Controllers\KontainerController::class, 'import'])->name('import');
+        });
+
+        Route::middleware('permission:kontainer.view')->group(function () {
+            Route::get('/', [\App\Http\Controllers\KontainerController::class, 'index'])->name('index');
+            Route::get('/{document}', [\App\Http\Controllers\KontainerController::class, 'show'])->name('show');
+        });
+
+        Route::middleware('permission:kontainer.submit')->group(function () {
+            Route::post('/{document}/submit', [\App\Http\Controllers\KontainerController::class, 'submit'])->name('submit');
         });
     });
 

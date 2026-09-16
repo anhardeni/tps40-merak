@@ -21,6 +21,7 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
+            'password' => 'password',
             'workos_id' => 'test-'.Str::random(10),
             'username' => fake()->unique()->userName(),
             'employee_id' => fake()->unique()->numerify('EMP###'),

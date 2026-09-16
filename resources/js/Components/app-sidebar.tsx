@@ -6,7 +6,7 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, Sid
 import { dashboard } from '@/routes';
 import { type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Activity, BookOpen, FileText, Folder, LayoutGrid, TestTube, FileWarning, Users, Shield, Settings, Database, PanelLeft, Key, MapPin } from 'lucide-react';
+import { Activity, BookOpen, FileText, Folder, LayoutGrid, TestTube, FileWarning, Users, Shield, Settings, Database, PanelLeft, Key, MapPin, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import AppLogoIcon from './app-logo-icon';
 
 const mainNavItems: NavItem[] = [
@@ -19,6 +19,16 @@ const mainNavItems: NavItem[] = [
         title: 'Documents',
         href: '/documents',
         icon: FileText,
+    },
+    {
+        title: 'Pemasukan (Gate In)',
+        href: '/pemasukan',
+        icon: ArrowDownLeft,
+    },
+    {
+        title: 'Pengeluaran (Gate Out)',
+        href: '/pengeluaran',
+        icon: ArrowUpRight,
     },
     {
         title: 'CoCoTangki',
@@ -145,6 +155,18 @@ export function AppSidebar() {
 
     const canAccessReference = hasPermission('manage.references');
     const canAccessAdmin = hasPermission('manage.users');
+    const canAccessKontainer = hasPermission('kontainer.view');
+
+    // Add Kontainer to mainNavItems if user has permission
+    const filteredMainNavItems = [...mainNavItems];
+    if (canAccessKontainer) {
+        // Insert after Documents (index 1)
+        filteredMainNavItems.splice(2, 0, {
+            title: 'Kontainer',
+            href: '/kontainer',
+            icon: Database, // Using Database icon as a placeholder, Box is better if available
+        });
+    }
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -170,7 +192,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent className="gap-0">
-                <NavMain items={mainNavItems} label="Main Menu" />
+                <NavMain items={filteredMainNavItems} label="Main Menu" />
                 <SidebarSeparator className="mx-0" />
 
                 {canAccessReference && (

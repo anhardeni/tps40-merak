@@ -60,7 +60,7 @@ class RolesAndPermissionsSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create($permission);
+            Permission::firstOrCreate(['name' => $permission['name']], $permission);
         }
 
         // Create Roles
@@ -125,11 +125,11 @@ class RolesAndPermissionsSeeder extends Seeder
             $permissions = $roleData['permissions'];
             unset($roleData['permissions']);
 
-            $role = Role::create($roleData);
+            $role = Role::firstOrCreate(['name' => $roleData['name']], $roleData);
 
             // Assign permissions to role
             $permissionIds = Permission::whereIn('name', $permissions)->pluck('id');
-            $role->permissions()->attach($permissionIds);
+            $role->permissions()->sync($permissionIds);
         }
 
         // Create default super admin user if no users exist
@@ -137,6 +137,7 @@ class RolesAndPermissionsSeeder extends Seeder
             $user = User::create([
                 'name' => 'Super Administrator',
                 'email' => 'admin@tpsonline.com',
+                'password' => 'password',
                 'username' => 'admin',
                 'employee_id' => 'ADMIN001',
                 'department' => 'IT',
@@ -151,9 +152,13 @@ class RolesAndPermissionsSeeder extends Seeder
             $superAdminRole = Role::where('name', 'super-admin')->first();
             $user->assignRole($superAdminRole);
 
-            $this->command->info('Default super admin user created: admin@tpsonline.com');
+            if (isset($this->command)) {
+                $this->command->info('Default super admin user created: admin@tpsonline.com');
+            }
         }
 
-        $this->command->info('Roles and permissions seeded successfully!');
+        if (isset($this->command)) {
+            $this->command->info('Roles and permissions seeded successfully!');
+        }
     }
 }

@@ -32,6 +32,7 @@ class ReferenceDataSeeder extends Seeder
             ['kd_tps' => 'TPSU', 'nm_tps' => 'TPS Udara', 'alamat' => '', 'kota' => '', 'is_active' => true],
             ['kd_tps' => 'TPSD', 'nm_tps' => 'TPS Darat', 'alamat' => '', 'kota' => '', 'is_active' => true],
             ['kd_tps' => 'TPSK', 'nm_tps' => 'TPS Khusus', 'alamat' => '', 'kota' => '', 'is_active' => true],
+            ['kd_tps' => 'PLCM', 'nm_tps' => 'TPS PLCM', 'alamat' => '', 'kota' => '', 'is_active' => true],
         ];
 
         foreach ($data as $item) {
@@ -81,6 +82,7 @@ class ReferenceDataSeeder extends Seeder
             ['kd_gudang' => 'G004', 'nm_gudang' => 'Gudang 4', 'kd_tps' => 'TPSU', 'alamat' => 'Area 4', 'kapasitas' => 1200.00, 'is_active' => true],
             ['kd_gudang' => 'G005', 'nm_gudang' => 'Gudang 5', 'kd_tps' => 'TPSD', 'alamat' => 'Area 5', 'kapasitas' => 2000.00, 'is_active' => true],
             ['kd_gudang' => 'TANK', 'nm_gudang' => 'Gudang Tangki', 'kd_tps' => 'TPSL', 'alamat' => 'Area Tangki', 'kapasitas' => 5000.00, 'is_active' => true],
+            ['kd_gudang' => 'A019', 'nm_gudang' => 'Gudang A019', 'kd_tps' => 'PLCM', 'alamat' => 'Area A019', 'kapasitas' => 5000.00, 'is_active' => true],
         ];
 
         foreach ($data as $item) {

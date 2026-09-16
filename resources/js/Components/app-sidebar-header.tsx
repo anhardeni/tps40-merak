@@ -20,19 +20,21 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
             
             {/* User Menu with Logout */}
             <div className="ml-auto">
-                <DropdownMenu>
-                    <DropdownMenuTrigger className="inline-flex items-center justify-center size-10 rounded-full p-1 hover:bg-accent transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                        <Avatar className="size-8 overflow-hidden rounded-full">
-                            <AvatarImage src={auth.user.avatar} alt={auth.user.name} />
-                            <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                {getInitials(auth.user.name)}
-                            </AvatarFallback>
-                        </Avatar>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="end">
-                        <UserMenuContent user={auth.user} />
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {auth?.user && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger className="inline-flex items-center justify-center size-10 rounded-full p-1 hover:bg-accent transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            <Avatar className="size-8 overflow-hidden rounded-full">
+                                <AvatarImage src={auth.user.avatar} alt={auth.user.name} />
+                                <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
+                                    {getInitials(auth.user.name || '')}
+                                </AvatarFallback>
+                            </Avatar>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-56" align="end">
+                            <UserMenuContent user={auth.user} />
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
             </div>
         </header>
     );

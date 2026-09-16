@@ -29,3 +29,5 @@ yarn-error.log
 /app/pdfs
 /.agents
 /.skills
+/.graphify
+/graphify-out

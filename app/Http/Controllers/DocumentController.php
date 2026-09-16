@@ -8,6 +8,7 @@ use App\Models\KdGudang;
 use App\Models\KdTps;
 use App\Models\NmAngkut;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
@@ -506,14 +507,25 @@ class DocumentController extends Controller
             $import = new TangkiImport();
             $data = Excel::toCollection($import, $request->file('file'));
             
-            if ($data->isEmpty() || $data->first()->isEmpty()) {
+            if ($data->isEmpty()) {
+                return response()->json(['error' => 'File Excel kosong atau format tidak sesuai'], 422);
+            }
+
+            $rows = collect();
+            foreach ($data as $sheet) {
+                if ($sheet instanceof Collection) {
+                    $rows = $rows->concat($sheet);
+                }
+            }
+
+            if ($rows->isEmpty()) {
                 return response()->json(['error' => 'File Excel kosong atau format tidak sesuai'], 422);
             }
 
             // Return the data to the frontend to populate the form
             return response()->json([
                 'success' => true,
-                'data' => $data->first() // Return the first sheet
+                'data' => $rows
             ]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Gagal membaca file: ' . $e->getMessage()], 500);
