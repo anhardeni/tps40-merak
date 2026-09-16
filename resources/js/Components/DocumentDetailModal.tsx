@@ -52,10 +52,17 @@ export default function DocumentDetailModal({ isOpen, onClose, document }: Docum
 
     const isPemasukan = document.kd_dok === '1';
 
-    // Helper for nm_angkut extraction
     const nmAngkutText = typeof document.nm_angkut === 'object' && document.nm_angkut !== null
         ? (document.nm_angkut as any).nm_angkut || '-'
         : (document.nm_angkut || '-');
+
+    const kdTpsText = typeof document.kd_tps === 'object' && document.kd_tps !== null
+        ? (document.kd_tps as any).kd_tps || '-'
+        : (document.kd_tps || '-');
+
+    const kdGudangText = typeof document.kd_gudang === 'object' && document.kd_gudang !== null
+        ? (document.kd_gudang as any).kd_gudang || '-'
+        : (document.kd_gudang || '-');
 
     // Helper to format dates cleanly
     const formatDate = (val?: string) => {
@@ -102,8 +109,8 @@ export default function DocumentDetailModal({ isOpen, onClose, document }: Docum
                                 <p className="text-xs text-muted-foreground">Voyage: {document.no_voy_flight || '-'}</p>
                             </div>
                             <div className="pt-2 border-t flex justify-between text-xs">
-                                <div><span className="text-muted-foreground">KD TPS:</span> <span className="font-semibold">{document.kd_tps || '-'}</span></div>
-                                <div><span className="text-muted-foreground">Gudang:</span> <span className="font-semibold">{document.kd_gudang || '-'}</span></div>
+                                <div><span className="text-muted-foreground">KD TPS:</span> <span className="font-semibold">{kdTpsText}</span></div>
+                                <div><span className="text-muted-foreground">Gudang:</span> <span className="font-semibold">{kdGudangText}</span></div>
                             </div>
                         </div>
 
